@@ -18,6 +18,17 @@ export type ResolveHandle = Hono<
   '/'
 >;
 
+type DidDoc = {
+  '@context': string[];
+  id: string;
+  verificationMethod: {
+    id: string;
+    type: string;
+    controller: string;
+    publicKeyMultibase: strnig;
+  }[];
+};
+
 export type CreateSession = Hono<
   Env,
   ToSchema<
@@ -31,6 +42,8 @@ export type CreateSession = Hono<
     },
     {
       did: string;
+      didDoc: DidDoc;
+      handle: string;
     }
   >,
   '/'
