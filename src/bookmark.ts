@@ -101,3 +101,41 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
   await db.insert(bookmarks).values({ uri, cid, repo, rkey, sub });
   return c.json({ status: 'created', params: { url } }, 201);
 }
+
+export async function handleDeleteBookmark(c: ValidatedFormContext) {
+  const form = c.req.valid('form');
+  const url = new URL(form.url);
+
+  const [, , repo, collection, rkey] = url.pathname.split('/');
+  if (collection !== 'post') {
+    return c.json({ error: 'invalid post url', params: { url } }, 400);
+  }
+
+  const { sub } = c.get('jwtPayload');
+  const { DB } = env<{ DB: D1Database }>(c);
+  const db = drizzle(DB);
+
+  const uricid = await getPostUriCid(db, repo, rkey);
+  if (!uricid) {
+    return c.json({ error: 'post not found', params: { url } }, 404);
+  }
+  const { uri } = uricid;
+
+  const result = await db
+    .select()
+    .from(bookmarks)
+    .where(and(eq(bookmarks.sub, sub), eq(bookmarks.uri, uri)))
+    .get();
+
+  if (result && !result.isDeleted) {
+    await db
+      .update(bookmarks)
+      .set({
+        isDeleted: 1,
+        updatedAt: sql`(DATETIME('now', 'localtime'))`,
+      })
+      .where(eq(bookmarks.id, result.id));
+    return c.json({ status: 'deleted', params: { url } }, 200);
+  }
+  return c.json({ error: 'bookmark not found', params: { url } }, 404);
+}
