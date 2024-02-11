@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.1.11",
+    "@noble/secp256k1": "^2.0.0",
+    "base58-js": "^2.0.0",
     "drizzle-orm": "^0.29.3",
     "hono": "^4.0.0",
     "zod": "^3.22.4"
