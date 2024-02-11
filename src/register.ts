@@ -1,7 +1,7 @@
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { hc } from 'hono/client';
-import type { CreateSession } from './at-proto';
+import type { CreateSession, GetProfile } from './at-proto';
 import { sign } from 'hono/jwt';
 import { env } from 'hono/adapter';
 
@@ -12,6 +12,23 @@ export const validateRegisterForm = zValidator(
     password: z.string(),
   }),
 );
+
+async function checkFollowingFeedOwner(actor: string, token: string) {
+  const res = await hc<GetProfile>('https://bsky.social').xrpc[
+    'app.bsky.actor.getProfile'
+  ].$get({
+    query: { actor },
+    header: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    return false;
+  }
+  const { viewer } = await res.json();
+  if (viewer.blockedBy || viewer.muted || viewer.blocking) {
+    return false;
+  }
+  return viewer.followedBy && viewer.following;
+}
 
 type ValidatedFormContext = Parameters<typeof validateRegisterForm>[0];
 export async function registerAccount(c: ValidatedFormContext) {
@@ -24,9 +41,17 @@ export async function registerAccount(c: ValidatedFormContext) {
     return c.json({ error: 'authentication failed' }, 400);
   }
 
-  const { did, handle: handleName, didDoc } = await res.json();
+  const { did, handle: handleName, didDoc, accessJwt } = await res.json();
   if (handle !== handleName) {
     return c.json({ error: 'unexpected handle name' }, 400);
+  }
+
+  const { FEED_OWNER } = env<{ FEED_OWNER: string }>(c);
+  if (handle !== FEED_OWNER) {
+    const ok = await checkFollowingFeedOwner(FEED_OWNER, accessJwt);
+    if (!ok) {
+      return c.json({ error: 'forbidden' }, 403);
+    }
   }
 
   for (const method of didDoc.verificationMethod) {

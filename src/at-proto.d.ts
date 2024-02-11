@@ -44,6 +44,7 @@ export type CreateSession = Hono<
       did: string;
       didDoc: DidDoc;
       handle: string;
+      accessJwt: string;
     }
   >,
   '/'
@@ -68,6 +69,34 @@ export type GetRecord = Hono<
         text: string;
         $type: string;
         createdAt: string;
+      };
+    }
+  >,
+  '/'
+>;
+
+export type GetProfile = Hono<
+  Env,
+  ToSchema<
+    'get',
+    '/xrpc/app.bsky.actor.getProfile',
+    {
+      query: {
+        actor: string;
+      };
+      header: {
+        Authorization: string;
+      };
+    },
+    {
+      did: string;
+      handle: string;
+      viewer: {
+        muted: boolean;
+        blockedBy: boolean;
+        blocking?: string;
+        following?: string;
+        followedBy?: string;
       };
     }
   >,
