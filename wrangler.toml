@@ -54,3 +54,7 @@ compatibility_date = "2024-02-08"
 binding = "DB" # i.e. available in your Worker on env.DB
 database_name = "bluebookmark"
 database_id = "7b7cf496-b2b5-4dda-a9f8-f51578b6437f"
+
+[[kv_namespaces]]
+binding = "did_key_store"
+id = "c52ce9841627483a8f0148b26dd21388"
