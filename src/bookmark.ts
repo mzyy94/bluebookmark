@@ -32,6 +32,29 @@ export const validatePostURLForm = zValidator(
   }),
 );
 
+async function getPostUriCid(
+  db: ReturnType<typeof drizzle>,
+  repo: string,
+  rkey: string,
+) {
+  const result = await db
+    .select({ uri: bookmarks.uri, cid: bookmarks.cid })
+    .from(bookmarks)
+    .where(and(eq(bookmarks.repo, repo), eq(bookmarks.rkey, rkey)))
+    .get();
+  if (result) {
+    return result;
+  }
+  const res = await hc<GetRecord>('https://bsky.social').xrpc[
+    'com.atproto.repo.getRecord'
+  ].$get({ query: { repo, collection: 'app.bsky.feed.post', rkey } });
+  if (res.ok) {
+    const { uri, cid } = await res.json();
+    return { uri, cid };
+  }
+  return null;
+}
+
 type ValidatedFormContext = Parameters<typeof validatePostURLForm>[0];
 export async function handlePostBookmark(c: ValidatedFormContext) {
   const form = c.req.valid('form');
@@ -46,18 +69,18 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
   const { DB } = env<{ DB: D1Database }>(c);
   const db = drizzle(DB);
 
+  const uricid = await getPostUriCid(db, repo, rkey);
+  if (!uricid) {
+    return c.json({ error: 'post not found', params: { url } }, 404);
+  }
+  const { uri, cid } = uricid;
+
   // Check whether already bookmarked
   {
     const result = await db
       .select()
       .from(bookmarks)
-      .where(
-        and(
-          eq(bookmarks.sub, sub),
-          eq(bookmarks.repo, repo),
-          eq(bookmarks.rkey, rkey),
-        ),
-      )
+      .where(and(eq(bookmarks.sub, sub), eq(bookmarks.uri, uri)))
       .get();
 
     if (result) {
@@ -75,26 +98,6 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
     }
   }
 
-  // Get uri and cid from a table if it exists
-  {
-    const result = await db
-      .select({ uri: bookmarks.uri, cid: bookmarks.cid })
-      .from(bookmarks)
-      .where(and(eq(bookmarks.repo, repo), eq(bookmarks.rkey, rkey)))
-      .get();
-    if (result) {
-      await db.insert(bookmarks).values({ ...result, repo, rkey, sub });
-      return c.json({ status: 'created', params: { url } }, 201);
-    }
-  }
-
-  const res = await hc<GetRecord>('https://bsky.social').xrpc[
-    'com.atproto.repo.getRecord'
-  ].$get({ query: { repo, collection: 'app.bsky.feed.post', rkey } });
-  if (!res.ok) {
-    return c.json({ error: 'post not found', params: { url } }, 404);
-  }
-  const { uri, cid } = await res.json();
   await db.insert(bookmarks).values({ uri, cid, repo, rkey, sub });
   return c.json({ status: 'created', params: { url } }, 201);
 }
