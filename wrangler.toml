@@ -49,3 +49,8 @@ compatibility_date = "2024-02-08"
 # [[migrations]]
 # tag = "v1"
 # new_classes = ["MyDurableObject"]
+
+[[d1_databases]]
+binding = "DB" # i.e. available in your Worker on env.DB
+database_name = "bluebookmark"
+database_id = "7b7cf496-b2b5-4dda-a9f8-f51578b6437f"
