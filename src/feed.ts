@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
 import { bookmarks } from './schema';
-import { and, desc, eq, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
 import { decode } from 'hono/jwt';
 import { verifyJwt } from './verify';
 import { fetchPubkey, getPubkey, savePubkey } from './pubkey';
@@ -46,10 +46,13 @@ export async function getFeedSkeleton(c: Context) {
   const db = drizzle(DB);
 
   const limit = parseInt(c.req.query('limit') ?? '50', 10);
-  const time = c.req.query('cursor')?.match(/^(\d+)::([\w]+)$/)?.[1];
-  const filter = time
-    ? lte(sql`unixepoch(${bookmarks.updatedAt})`, +time)
-    : undefined;
+  const [time, cid] = c.req.query('cursor')?.match(/^(\d+)::([\w]+)$/) ?? [];
+  const filters = time
+    ? [
+        lte(sql`unixepoch(${bookmarks.updatedAt})`, +time),
+        ne(bookmarks.cid, cid),
+      ]
+    : [];
 
   const result = await db
     .select({
@@ -60,7 +63,7 @@ export async function getFeedSkeleton(c: Context) {
     .from(bookmarks)
     .orderBy(desc(bookmarks.updatedAt))
     .limit(limit)
-    .where(and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, 0), filter));
+    .where(and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, 0), ...filters));
 
   const feed = result.map((item) => ({ post: item.uri }));
   const lastPost = result[result.length - 1];
