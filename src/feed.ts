@@ -4,6 +4,7 @@ import { env } from 'hono/adapter';
 import { bookmarks } from './schema';
 import { and, desc, eq, lte, sql } from 'drizzle-orm';
 import { decode } from 'hono/jwt';
+import { verifyJwt } from './verify';
 
 export async function getFeedSkeleton(c: Context) {
   const jwt = c.req
@@ -13,12 +14,23 @@ export async function getFeedSkeleton(c: Context) {
     return c.json({ feed: [] });
   }
 
-  // TODO: verify jwt
   const {
     payload: { iss, exp },
   } = decode(jwt);
   if (exp * 1000 < Date.now()) {
     // token expired
+    return c.json({ feed: [] });
+  }
+
+  const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
+  const keyDid = await did_key_store.get(iss);
+  if (!keyDid) {
+    return c.json({ feed: [] });
+  }
+
+  const verified = await verifyJwt(jwt, keyDid);
+  if (!verified) {
+    // TODO: refresh cached key and re-verify
     return c.json({ feed: [] });
   }
 
