@@ -75,6 +75,25 @@ export type GetRecord = Hono<
   '/'
 >;
 
+export type DescribeRepo = Hono<
+  Env,
+  ToSchema<
+    'get',
+    '/xrpc/com.atproto.repo.describeRepo',
+    {
+      query: {
+        repo: string;
+      };
+    },
+    {
+      handle: string;
+      did: string;
+      didDoc: DidDoc;
+    }
+  >,
+  '/'
+>;
+
 export type GetProfile = Hono<
   Env,
   ToSchema<

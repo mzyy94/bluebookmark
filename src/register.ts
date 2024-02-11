@@ -4,6 +4,7 @@ import { hc } from 'hono/client';
 import type { CreateSession, GetProfile } from './at-proto';
 import { sign } from 'hono/jwt';
 import { env } from 'hono/adapter';
+import { savePubkey } from './pubkey';
 
 export const validateRegisterForm = zValidator(
   'form',
@@ -54,13 +55,7 @@ export async function registerAccount(c: ValidatedFormContext) {
     }
   }
 
-  for (const method of didDoc.verificationMethod) {
-    if (method.type === 'Multikey' && method.publicKeyMultibase) {
-      const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
-      await did_key_store.put(did, method.publicKeyMultibase);
-      break;
-    }
-  }
+  await savePubkey(c, didDoc);
 
   const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
   const token = await sign(
