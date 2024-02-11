@@ -35,3 +35,28 @@ export type CreateSession = Hono<
   >,
   '/'
 >;
+
+export type GetRecord = Hono<
+  Env,
+  ToSchema<
+    'get',
+    '/xrpc/com.atproto.repo.getRecord',
+    {
+      query: {
+        repo: string;
+        collection: string;
+        rkey: string;
+      };
+    },
+    {
+      uri: string;
+      cid: string;
+      value: {
+        text: string;
+        $type: string;
+        createdAt: string;
+      };
+    }
+  >,
+  '/'
+>;
