@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "init:local": "wrangler d1 execute bluebookmark --local --file=src/database.sql",
+    "init:local": "wrangler d1 execute bluebookmark --local --file=drizzle/0000_slippery_sebastian_shaw.sql",
+    "generate:sqlite": "drizzle-kit generate:sqlite --schema=src/schema.ts",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "start": "wrangler dev"
@@ -11,11 +12,13 @@
   "devDependencies": {
     "@biomejs/biome": "1.5.3",
     "@cloudflare/workers-types": "^4.20240208.0",
+    "drizzle-kit": "^0.20.14",
     "typescript": "^5.0.4",
     "wrangler": "^3.0.0"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.1.11",
+    "drizzle-orm": "^0.29.3",
     "hono": "^4.0.0",
     "zod": "^3.22.4"
   }
