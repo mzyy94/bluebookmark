@@ -71,29 +71,23 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
   const { uri, cid } = uricid;
 
   // Check whether already bookmarked
-  {
-    const result = await db
-      .select()
-      .from(bookmarks)
-      .where(and(eq(bookmarks.sub, sub), eq(bookmarks.uri, uri)))
-      .get();
+  const result = await db
+    .select()
+    .from(bookmarks)
+    .where(and(eq(bookmarks.sub, sub), eq(bookmarks.uri, uri)))
+    .get();
 
-    if (result) {
-      if (result.isDeleted) {
-        await db
-          .update(bookmarks)
-          .set({
-            isDeleted: false,
-            updatedAt: sql`(DATETIME('now', 'localtime'))`,
-          })
-          .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)));
-        return c.json({ status: 'created', params: { url } }, 201);
-      }
-      return c.json({ error: 'already bookmarked', params: { url } }, 409);
-    }
+  if (result && !result.isDeleted) {
+    return c.json({ error: 'already bookmarked', params: { url } }, 409);
   }
 
-  await db.insert(bookmarks).values({ uri, cid, repo, rkey, sub });
+  await db
+    .insert(bookmarks)
+    .values({ uri, cid, repo, rkey, sub })
+    .onConflictDoUpdate({
+      target: [bookmarks.uri, bookmarks.sub],
+      set: { isDeleted: false, updatedAt: sql`(DATETIME('now', 'localtime'))` },
+    });
   return c.json({ status: 'created', params: { url } }, 201);
 }
 
