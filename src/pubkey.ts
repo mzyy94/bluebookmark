@@ -17,20 +17,44 @@ export async function savePubkey(
   target: DidDoc | string,
   key = '',
 ) {
-  const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
+  let did: string;
+  let pubkey: string;
   if (typeof target === 'string') {
-    await did_key_store.put(target, key);
+    did = target;
+    pubkey = key;
   } else {
-    const did = target.id;
-    const pubkey = findPubkey(target);
-    if (pubkey) {
-      await did_key_store.put(did, pubkey);
-    }
+    did = target.id;
+    pubkey = findPubkey(target) ?? '';
   }
+  if (!did || !pubkey) {
+    return;
+  }
+
+  const { did_key_store, FEED_HOST } = env<{
+    did_key_store: KVNamespace;
+    FEED_HOST: string;
+  }>(c);
+
+  const cache = await caches.open('pubkey');
+  const req = new Request(`https://${FEED_HOST}/api/pubkey?did=${did}`);
+  const res = new Response(pubkey);
+  await cache.put(req, res);
+
+  await did_key_store.put(did, pubkey);
 }
 
 export async function getPubkey(c: Context, did: string) {
-  const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
+  const { did_key_store, FEED_HOST } = env<{
+    did_key_store: KVNamespace;
+    FEED_HOST: string;
+  }>(c);
+
+  const cache = await caches.open('pubkey');
+  const req = new Request(`https://${FEED_HOST}/api/pubkey?did=${did}`);
+  const res = await cache.match(req);
+  if (res?.ok) {
+    return res.text();
+  }
   return did_key_store.get(did);
 }
 
