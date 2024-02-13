@@ -5,7 +5,7 @@ import { jwt } from 'hono/jwt';
 import { env } from 'hono/adapter';
 import { GetRecord } from './at-proto';
 import { hc } from 'hono/client';
-import { drizzle } from 'drizzle-orm/d1';
+import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
 import { bookmarks } from './schema';
 import { and, eq, sql } from 'drizzle-orm';
 
@@ -53,6 +53,20 @@ async function getPostUriCid(
   return null;
 }
 
+function findBookmark(db: DrizzleD1Database, sub: string, uri: string) {
+  return db
+    .select()
+    .from(bookmarks)
+    .where(
+      and(
+        eq(bookmarks.sub, sub),
+        eq(bookmarks.uri, uri),
+        eq(bookmarks.isDeleted, false),
+      ),
+    )
+    .get();
+}
+
 type ValidatedFormContext = Parameters<typeof validatePostURLForm>[0];
 export async function handlePostBookmark(c: ValidatedFormContext) {
   const form = c.req.valid('form');
@@ -70,13 +84,9 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
   const { uri, cid } = uricid;
 
   // Check whether already bookmarked
-  const result = await db
-    .select()
-    .from(bookmarks)
-    .where(and(eq(bookmarks.sub, sub), eq(bookmarks.uri, uri)))
-    .get();
+  const result = await findBookmark(db, sub, uri);
 
-  if (result && !result.isDeleted) {
+  if (result) {
     return c.json({ error: 'already bookmarked', params: { url } }, 409);
   }
 
@@ -105,21 +115,17 @@ export async function handleDeleteBookmark(c: ValidatedFormContext) {
   }
   const { uri } = uricid;
 
-  const result = await db
-    .select()
-    .from(bookmarks)
-    .where(and(eq(bookmarks.sub, sub), eq(bookmarks.uri, uri)))
-    .get();
-
-  if (result && !result.isDeleted) {
-    await db
-      .update(bookmarks)
-      .set({
-        isDeleted: true,
-        updatedAt: sql`(DATETIME('now', 'localtime'))`,
-      })
-      .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)));
-    return c.json({ status: 'deleted', params: { url } }, 200);
+  const result = await findBookmark(db, sub, uri);
+  if (!result) {
+    return c.json({ error: 'bookmark not found', params: { url } }, 404);
   }
-  return c.json({ error: 'bookmark not found', params: { url } }, 404);
+
+  await db
+    .update(bookmarks)
+    .set({
+      isDeleted: true,
+      updatedAt: sql`(DATETIME('now', 'localtime'))`,
+    })
+    .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)));
+  return c.json({ status: 'deleted', params: { url } }, 200);
 }
