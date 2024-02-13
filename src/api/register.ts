@@ -1,10 +1,10 @@
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { hc } from 'hono/client';
-import type { CreateSession, GetProfile } from './at-proto';
+import type { CreateSession, GetProfile } from '../at-proto';
 import { sign } from 'hono/jwt';
 import { env } from 'hono/adapter';
-import { savePubkey } from './pubkey';
+import { savePubkey } from '../pubkey';
 
 export const validateRegisterForm = zValidator(
   'form',

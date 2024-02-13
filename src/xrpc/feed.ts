@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
-import { bookmarks } from './schema';
+import { bookmarks } from '../schema';
 import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
 
 export async function getFeedSkeleton(c: Context) {

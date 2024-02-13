@@ -1,15 +1,15 @@
 import { Hono } from 'hono';
 import { wellKnown } from './well-known';
-import { getFeedSkeleton } from './feed';
-import { registerAccount, validateRegisterForm } from './register';
+import { getFeedSkeleton } from './xrpc/feed';
+import { registerAccount, validateRegisterForm } from './api/register';
 import {
   JwtAuth,
   handlePostBookmark,
   handleDeleteBookmark,
   validatePostURLForm,
-} from './bookmark';
+} from './api/bookmark';
 import { signUpPage } from './page';
-import { XrpcAuth } from './auth';
+import { XrpcAuth } from './xrpc/auth';
 
 const app = new Hono();
 app.get('/', (c) => c.html(signUpPage));

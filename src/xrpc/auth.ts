@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono';
 import { decode } from 'hono/jwt';
 import { verifyJwt } from './verify';
-import { fetchPubkey, getPubkey, savePubkey } from './pubkey';
+import { fetchPubkey, getPubkey, savePubkey } from '../pubkey';
 import { HTTPException } from 'hono/http-exception';
 
 type Option =

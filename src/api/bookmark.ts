@@ -3,10 +3,10 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { jwt } from 'hono/jwt';
 import { env } from 'hono/adapter';
-import { GetRecord } from './at-proto';
+import { GetRecord } from '../at-proto';
 import { hc } from 'hono/client';
 import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
-import { bookmarks } from './schema';
+import { bookmarks } from '../schema';
 import { and, eq, sql } from 'drizzle-orm';
 
 export const JwtAuth = (c: Context, next: Next) => {
