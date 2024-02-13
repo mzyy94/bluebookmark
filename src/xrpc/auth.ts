@@ -16,6 +16,13 @@ type Option =
 // https://atproto.com/specs/xrpc#inter-service-authentication-temporary-specification
 export const XrpcAuth = (opt: Option) =>
   createMiddleware(async (c, next) => {
+    const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
+    if (new URL(c.req.url).host !== FEED_HOST) {
+      throw new HTTPException(404, {
+        res: c.json({ message: 'Not Found', error: 'not found' }, 404),
+      });
+    }
+
     const jwt = c.req
       .header('Authorization')
       ?.match(/^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)/)?.[1];
@@ -40,7 +47,6 @@ export const XrpcAuth = (opt: Option) =>
       throw clientError(c, 401, 'unauthorized', 'invalid token payload');
     }
 
-    const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
     if (aud !== `did:web:${FEED_HOST}`) {
       throw clientError(c, 401, 'unauthorized', 'malformed token');
     }
