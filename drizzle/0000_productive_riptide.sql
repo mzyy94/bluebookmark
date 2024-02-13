@@ -1,5 +1,4 @@
 CREATE TABLE `bookmarks` (
-	`id` integer PRIMARY KEY NOT NULL,
 	`sub` text NOT NULL,
 	`repo` text NOT NULL,
 	`rkey` text NOT NULL,
@@ -7,5 +6,6 @@ CREATE TABLE `bookmarks` (
 	`cid` text NOT NULL,
 	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL,
 	`updated_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL,
-	`deleted` integer DEFAULT 0 NOT NULL
+	`deleted` integer DEFAULT false NOT NULL,
+	PRIMARY KEY(`sub`, `uri`)
 );

@@ -30,7 +30,9 @@ export async function getFeedSkeleton(c: Context) {
     .from(bookmarks)
     .orderBy(desc(bookmarks.updatedAt))
     .limit(limit)
-    .where(and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, 0), ...filters));
+    .where(
+      and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, false), ...filters),
+    );
 
   const feed = result.map((item) => ({ post: item.uri }));
   const lastPost = result[result.length - 1];

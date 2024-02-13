@@ -83,10 +83,10 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
         await db
           .update(bookmarks)
           .set({
-            isDeleted: 0,
+            isDeleted: false,
             updatedAt: sql`(DATETIME('now', 'localtime'))`,
           })
-          .where(eq(bookmarks.id, result.id));
+          .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)));
         return c.json({ status: 'created', params: { url } }, 201);
       }
       return c.json({ error: 'already bookmarked', params: { url } }, 409);
@@ -126,10 +126,10 @@ export async function handleDeleteBookmark(c: ValidatedFormContext) {
     await db
       .update(bookmarks)
       .set({
-        isDeleted: 1,
+        isDeleted: true,
         updatedAt: sql`(DATETIME('now', 'localtime'))`,
       })
-      .where(eq(bookmarks.id, result.id));
+      .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)));
     return c.json({ status: 'deleted', params: { url } }, 200);
   }
   return c.json({ error: 'bookmark not found', params: { url } }, 404);

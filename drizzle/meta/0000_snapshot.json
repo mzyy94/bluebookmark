@@ -1,19 +1,12 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "8907319f-e276-495f-9cb1-610f3826963a",
+  "id": "552e4591-11b3-4fad-8161-f6b67564610f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "bookmarks": {
       "name": "bookmarks",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
         "sub": {
           "name": "sub",
           "type": "text",
@@ -71,12 +64,20 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": 0
+          "default": false
         }
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "bookmarks_sub_uri_pk": {
+          "columns": [
+            "sub",
+            "uri"
+          ],
+          "name": "bookmarks_sub_uri_pk"
+        }
+      },
       "uniqueConstraints": {}
     }
   },
