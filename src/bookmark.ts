@@ -23,7 +23,10 @@ export const validatePostURLForm = zValidator(
     url: z
       .string()
       .url()
-      .regex(/\/\/bsky.(app|social)\//, 'host must be bsky.app or bsky.social'),
+      .regex(
+        /\/\/bsky.(app|social)\/profile\/[a-zA-Z0-9\.-]+\/post\/\w+/,
+        'invalid post url',
+      ),
   }),
 );
 
@@ -54,11 +57,7 @@ type ValidatedFormContext = Parameters<typeof validatePostURLForm>[0];
 export async function handlePostBookmark(c: ValidatedFormContext) {
   const form = c.req.valid('form');
   const url = new URL(form.url);
-
-  const [, , repo, collection, rkey] = url.pathname.split('/');
-  if (collection !== 'post') {
-    return c.json({ error: 'invalid post url', params: { url } }, 400);
-  }
+  const [, , repo, , rkey] = url.pathname.split('/');
 
   const { sub } = c.get('jwtPayload');
   const { DB } = env<{ DB: D1Database }>(c);
@@ -94,11 +93,7 @@ export async function handlePostBookmark(c: ValidatedFormContext) {
 export async function handleDeleteBookmark(c: ValidatedFormContext) {
   const form = c.req.valid('form');
   const url = new URL(form.url);
-
-  const [, , repo, collection, rkey] = url.pathname.split('/');
-  if (collection !== 'post') {
-    return c.json({ error: 'invalid post url', params: { url } }, 400);
-  }
+  const [, , repo, , rkey] = url.pathname.split('/');
 
   const { sub } = c.get('jwtPayload');
   const { DB } = env<{ DB: D1Database }>(c);
