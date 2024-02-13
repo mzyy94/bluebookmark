@@ -25,10 +25,10 @@ export const XrpcAuth = (opt: Option) =>
 
     const jwt = c.req
       .header('Authorization')
-      ?.match(/^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)/)?.[1];
+      ?.match(/^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)/i)?.[1];
 
     if (!jwt) {
-      throw clientError(c, 400, 'bad request', 'no authorization header');
+      throw authError(c, 400, 'bad request', 'no authorization header');
     }
 
     let iss: string | undefined;
@@ -39,16 +39,16 @@ export const XrpcAuth = (opt: Option) =>
         payload: { iss, exp, aud },
       } = decode(jwt));
     } catch {
-      throw clientError(c, 401, 'unauthorized', 'malformed token');
+      throw authError(c, 401, 'unauthorized', 'malformed token');
     }
 
     if (!exp || !iss || exp * 1000 < Date.now()) {
       // invalid jwt
-      throw clientError(c, 401, 'unauthorized', 'invalid token payload');
+      throw authError(c, 401, 'unauthorized', 'invalid token payload');
     }
 
     if (aud !== `did:web:${FEED_HOST}`) {
-      throw clientError(c, 401, 'unauthorized', 'malformed token');
+      throw authError(c, 401, 'unauthorized', 'malformed token');
     }
 
     const pubkey = await getPubkey(c, iss);
@@ -58,7 +58,7 @@ export const XrpcAuth = (opt: Option) =>
         await next();
         return;
       }
-      throw clientError(c, 403, 'forbidden', 'access forbidden');
+      throw authError(c, 403, 'forbidden', 'access forbidden');
     }
 
     const verified = await verifyJwt(jwt, pubkey);
@@ -73,7 +73,7 @@ export const XrpcAuth = (opt: Option) =>
       }
       const verified = await verifyJwt(jwt, pubkey);
       if (!verified) {
-        throw clientError(c, 401, 'unauthorized', 'token verification failure');
+        throw authError(c, 401, 'unauthorized', 'token verification failure');
       }
       await savePubkey(c, iss, pubkey);
     }
@@ -82,7 +82,7 @@ export const XrpcAuth = (opt: Option) =>
     await next();
   });
 
-function clientError(
+function authError(
   c: Context,
   code: ClientErrorStatusCode,
   message: string,

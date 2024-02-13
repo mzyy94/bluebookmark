@@ -5,7 +5,7 @@ import type { CreateSession, GetProfile } from '../at-proto';
 import { sign } from 'hono/jwt';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
-import { savePubkey } from '../pubkey';
+import { findPubkey, savePubkey } from '../pubkey';
 
 const validateRegisterForm = zValidator(
   'form',
@@ -59,7 +59,7 @@ export const registerAccount = factory.createHandlers(
       }
     }
 
-    await savePubkey(c, didDoc);
+    await savePubkey(c, didDoc.id, findPubkey(didDoc) ?? '');
 
     const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
     const now = Math.floor(Date.now() / 1000);

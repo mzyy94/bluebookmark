@@ -19,12 +19,13 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     const limit = parseInt(c.req.query('limit') ?? '50', 10);
     const [time, cid] = c.req.query('cursor')?.match(/^(\d+)::([\w]+)$/) ?? [];
-    const filters = time
-      ? [
-          lte(sql`unixepoch(${bookmarks.updatedAt})`, +time),
-          ne(bookmarks.cid, cid),
-        ]
-      : [];
+    const filters =
+      time && cid
+        ? [
+            lte(sql`unixepoch(${bookmarks.updatedAt})`, +time),
+            ne(bookmarks.cid, cid),
+          ]
+        : [];
 
     const result = await db
       .select({

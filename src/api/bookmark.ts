@@ -41,7 +41,7 @@ const validatePostURLForm = zValidator(
   }),
 );
 
-async function getPostUriCid(
+async function getPostRecord(
   db: ReturnType<typeof drizzle>,
   repo: string,
   rkey: string,
@@ -58,8 +58,7 @@ async function getPostUriCid(
     'com.atproto.repo.getRecord'
   ].$get({ query: { repo, collection: 'app.bsky.feed.post', rkey } });
   if (res.ok) {
-    const { uri, cid } = await res.json();
-    return { uri, cid };
+    return res.json();
   }
   return null;
 }
@@ -91,11 +90,11 @@ export const postBookmarkHandlers = factory.createHandlers(
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    const uricid = await getPostUriCid(db, repo, rkey);
-    if (!uricid) {
+    const record = await getPostRecord(db, repo, rkey);
+    if (!record) {
       return c.json({ error: 'post not found', params: { url } }, 404);
     }
-    const { uri, cid } = uricid;
+    const { uri, cid } = record;
 
     // Check whether already bookmarked
     const result = await findBookmark(db, sub, uri);
@@ -131,11 +130,11 @@ export const deleteBookmarkHandlers = factory.createHandlers(
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    const uricid = await getPostUriCid(db, repo, rkey);
-    if (!uricid) {
+    const record = await getPostRecord(db, repo, rkey);
+    if (!record) {
       return c.json({ error: 'post not found', params: { url } }, 404);
     }
-    const { uri } = uricid;
+    const { uri } = record;
 
     const result = await findBookmark(db, sub, uri);
     if (!result) {

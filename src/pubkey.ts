@@ -12,20 +12,7 @@ export function findPubkey(didDoc: DidDoc): string | null {
   return null;
 }
 
-export async function savePubkey(
-  c: Context,
-  target: DidDoc | string,
-  key = '',
-) {
-  let did: string;
-  let pubkey: string;
-  if (typeof target === 'string') {
-    did = target;
-    pubkey = key;
-  } else {
-    did = target.id;
-    pubkey = findPubkey(target) ?? '';
-  }
+export async function savePubkey(c: Context, did: string, pubkey: string) {
   if (!did || !pubkey) {
     return;
   }
