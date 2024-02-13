@@ -1,24 +1,17 @@
 import { Hono } from 'hono';
 import { wellKnown } from './well-known';
-import { getFeedSkeleton } from './xrpc/feed';
-import { registerAccount, validateRegisterForm } from './api/register';
-import {
-  JwtAuth,
-  handlePostBookmark,
-  handleDeleteBookmark,
-  validatePostURLForm,
-} from './api/bookmark';
+import { getFeedSkeletonHandlers } from './xrpc/feed';
+import { registerAccount } from './api/register';
+import { postBookmarkHandlers, deleteBookmarkHandlers } from './api/bookmark';
 import { signUpPage } from './page';
-import { XrpcAuth } from './xrpc/auth';
 
 const app = new Hono();
+app.notFound((c) => c.json({ message: 'Not Found', error: 'not found' }, 404));
 app.get('/', (c) => c.html(signUpPage));
 app.get('/.well-known/did.json', wellKnown);
-app.use('/xrpc/*', XrpcAuth({ allowGuest: true }));
-app.get('/xrpc/app.bsky.feed.getFeedSkeleton', getFeedSkeleton);
-app.post('/api/register', validateRegisterForm, registerAccount);
-app.use('/api/bookmark', JwtAuth, validatePostURLForm);
-app.post('/api/bookmark', handlePostBookmark);
-app.delete('/api/bookmark', handleDeleteBookmark);
+app.get('/xrpc/app.bsky.feed.getFeedSkeleton', ...getFeedSkeletonHandlers);
+app.post('/api/register', ...registerAccount);
+app.post('/api/bookmark', ...postBookmarkHandlers);
+app.delete('/api/bookmark', ...deleteBookmarkHandlers);
 
 export default app;
