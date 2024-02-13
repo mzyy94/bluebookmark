@@ -1,8 +1,10 @@
+import type { Context } from 'hono';
 import { decode } from 'hono/jwt';
 import { verifyJwt } from './verify';
 import { fetchPubkey, getPubkey, savePubkey } from '../pubkey';
 import { HTTPException } from 'hono/http-exception';
 import { createMiddleware } from 'hono/factory';
+import { ClientErrorStatusCode } from 'hono/utils/http-status';
 
 type Option =
   | {
@@ -18,11 +20,7 @@ export const XrpcAuth = (opt: Option) =>
       ?.match(/^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)/)?.[1];
 
     if (!jwt) {
-      throw new HTTPException(400, {
-        res: c.text('Bad Request', 400, {
-          'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_request",error_description="no authorization header"`,
-        }),
-      });
+      throw clientError(c, 400, 'bad request', 'no authorization header');
     }
 
     let iss: string | undefined;
@@ -32,20 +30,12 @@ export const XrpcAuth = (opt: Option) =>
       iss = payload.iss;
       exp = payload.exp;
     } catch {
-      throw new HTTPException(401, {
-        res: c.text('Unauthorized', 401, {
-          'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token",error_description="malformed token"`,
-        }),
-      });
+      throw clientError(c, 401, 'unauthorized', 'malformed token');
     }
 
     if (!exp || !iss || exp * 1000 < Date.now()) {
       // invalid jwt
-      throw new HTTPException(401, {
-        res: c.text('Unauthorized', 401, {
-          'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token",error_description="invalid token payload"`,
-        }),
-      });
+      throw clientError(c, 401, 'unauthorized', 'invalid token payload');
     }
 
     const pubkey = await getPubkey(c, iss);
@@ -55,7 +45,7 @@ export const XrpcAuth = (opt: Option) =>
         await next();
         return;
       }
-      throw new HTTPException(403, { message: 'Forbidden' });
+      throw clientError(c, 403, 'forbidden', 'access forbidden');
     }
 
     const verified = await verifyJwt(jwt, pubkey);
@@ -65,16 +55,12 @@ export const XrpcAuth = (opt: Option) =>
       if (!pubkey) {
         // error on xrpc request to bsky server
         throw new HTTPException(502, {
-          message: 'failed to request describeRepo',
+          res: c.json({ error: 'request public key failure' }, 502),
         });
       }
       const verified = await verifyJwt(jwt, pubkey);
       if (!verified) {
-        throw new HTTPException(401, {
-          res: c.text('Unauthorized', 401, {
-            'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token",error_description="token verification failure"`,
-          }),
-        });
+        throw clientError(c, 401, 'unauthorized', 'token verification failure');
       }
       await savePubkey(c, iss, pubkey);
     }
@@ -82,3 +68,17 @@ export const XrpcAuth = (opt: Option) =>
     c.set('iss', iss);
     await next();
   });
+
+function clientError(
+  c: Context,
+  code: ClientErrorStatusCode,
+  message: string,
+  description: string,
+) {
+  const reason = code === 401 ? 'invalid_token' : 'invalid_request';
+  return new HTTPException(code, {
+    res: c.json({ error: message }, code, {
+      'WWW-Authenticate': `Bearer realm="${c.req.url}",error="${reason}",error_description="${description}"`,
+    }),
+  });
+}
