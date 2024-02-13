@@ -13,19 +13,30 @@ export async function XrpcAuth(c: Context, next: Next) {
   if (!jwt) {
     throw new HTTPException(400, {
       res: c.text('Bad Request', 400, {
-        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_request"`,
+        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_request",error_description="no authorization header"`,
       }),
     });
   }
 
-  const {
-    payload: { iss, exp },
-  } = decode(jwt);
-  if (exp * 1000 < Date.now()) {
-    // token expired
+  let iss: string | undefined;
+  let exp: number | undefined;
+  try {
+    const { payload } = decode(jwt);
+    iss = payload.iss;
+    exp = payload.exp;
+  } catch {
     throw new HTTPException(401, {
       res: c.text('Unauthorized', 401, {
-        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token"`,
+        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token",error_description="malformed token"`,
+      }),
+    });
+  }
+
+  if (!exp || !iss || exp * 1000 < Date.now()) {
+    // invalid jwt
+    throw new HTTPException(401, {
+      res: c.text('Unauthorized', 401, {
+        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token",error_description="invalid token payload"`,
       }),
     });
   }
@@ -50,7 +61,7 @@ export async function XrpcAuth(c: Context, next: Next) {
     if (!verified) {
       throw new HTTPException(401, {
         res: c.text('Unauthorized', 401, {
-          'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token"`,
+          'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token",error_description="token verification failure"`,
         }),
       });
     }
