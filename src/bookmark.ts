@@ -23,12 +23,7 @@ export const validatePostURLForm = zValidator(
     url: z
       .string()
       .url()
-      .and(
-        z
-          .string()
-          .startsWith('https://bsky.app/')
-          .or(z.string().startsWith('https://bsky.social/')),
-      ),
+      .regex(/\/\/bsky.(app|social)\//, 'host must be bsky.app or bsky.social'),
   }),
 );
 

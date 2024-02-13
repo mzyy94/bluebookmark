@@ -9,8 +9,8 @@ import { savePubkey } from './pubkey';
 export const validateRegisterForm = zValidator(
   'form',
   z.object({
-    handle: z.string(),
-    password: z.string(),
+    handle: z.string().min(3).includes('.'),
+    password: z.string().min(1),
   }),
 );
 
