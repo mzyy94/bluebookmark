@@ -19,6 +19,15 @@ const JwtAuth = factory.createMiddleware(async (c, next) => {
   return jwtMiddleware(c, next);
 });
 
+const JwtAuthErrorJson = factory.createMiddleware(async (c, next) => {
+  await next();
+  if (c.res.status === 401) {
+    const res = c.res.clone();
+    const body = await res.text();
+    c.res = c.json({ error: body.toLowerCase() }, res);
+  }
+});
+
 const validatePostURLForm = zValidator(
   'form',
   z.object({
@@ -70,6 +79,7 @@ function findBookmark(db: DrizzleD1Database, sub: string, uri: string) {
 }
 
 export const postBookmarkHandlers = factory.createHandlers(
+  JwtAuthErrorJson,
   JwtAuth,
   validatePostURLForm,
   async (c) => {
@@ -109,6 +119,7 @@ export const postBookmarkHandlers = factory.createHandlers(
 );
 
 export const deleteBookmarkHandlers = factory.createHandlers(
+  JwtAuthErrorJson,
   JwtAuth,
   validatePostURLForm,
   async (c) => {

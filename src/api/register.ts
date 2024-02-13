@@ -62,8 +62,9 @@ export const registerAccount = factory.createHandlers(
     await savePubkey(c, didDoc);
 
     const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
+    const now = Math.floor(Date.now() / 1000);
     const token = await sign(
-      { sub: did, iat: Math.floor(Date.now() / 1000) },
+      { sub: did, iat: now, exp: now + 30 * 24 * 60 * 60 },
       JWT_SECRET,
     );
 
