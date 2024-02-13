@@ -1,18 +1,25 @@
 import { drizzle } from 'drizzle-orm/d1';
-import type { Context } from 'hono';
+import type { Context, Next } from 'hono';
 import { env } from 'hono/adapter';
 import { bookmarks } from './schema';
 import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
 import { decode } from 'hono/jwt';
 import { verifyJwt } from './verify';
 import { fetchPubkey, getPubkey, savePubkey } from './pubkey';
+import { HTTPException } from 'hono/http-exception';
 
-export async function getFeedSkeleton(c: Context) {
+// https://atproto.com/specs/xrpc#inter-service-authentication-temporary-specification
+export async function XrpcAuth(c: Context, next: Next) {
   const jwt = c.req
     .header('Authorization')
-    ?.match(/^Bearer ([\w-]+\.[\w-]+\.[\w-]+)/)?.[1];
+    ?.match(/^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)/)?.[1];
+
   if (!jwt) {
-    return c.json({ feed: [] });
+    throw new HTTPException(400, {
+      res: c.text('Bad Request', 400, {
+        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_request"`,
+      }),
+    });
   }
 
   const {
@@ -20,12 +27,17 @@ export async function getFeedSkeleton(c: Context) {
   } = decode(jwt);
   if (exp * 1000 < Date.now()) {
     // token expired
-    return c.json({ feed: [] });
+    throw new HTTPException(401, {
+      res: c.text('Unauthorized', 401, {
+        'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token"`,
+      }),
+    });
   }
 
   const pubkey = await getPubkey(c, iss);
   if (!pubkey) {
-    return c.json({ feed: [] });
+    // not registered, return empty feed
+    throw new HTTPException(200, { res: c.json({ feed: [] }) });
   }
 
   const verified = await verifyJwt(jwt, pubkey);
@@ -33,15 +45,28 @@ export async function getFeedSkeleton(c: Context) {
     // refresh did key and re-verify
     const pubkey = await fetchPubkey(iss);
     if (!pubkey) {
-      return c.json({ feed: [] });
+      // error on xrpc request to bsky server
+      throw new HTTPException(502, {
+        message: 'failed to request describeRepo',
+      });
     }
     const verified = await verifyJwt(jwt, pubkey);
     if (!verified) {
-      return c.json({ feed: [] });
+      throw new HTTPException(401, {
+        res: c.text('Unauthorized', 401, {
+          'WWW-Authenticate': `Bearer realm="${c.req.url}",error="invalid_token"`,
+        }),
+      });
     }
     await savePubkey(c, iss, pubkey);
   }
 
+  c.set('iss', iss);
+  await next();
+}
+
+export async function getFeedSkeleton(c: Context) {
+  const iss = c.get('iss');
   const { DB } = env<{ DB: D1Database }>(c);
   const db = drizzle(DB);
 
