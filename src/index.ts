@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { wellKnown } from './well-known';
-import { XrpcAuth, getFeedSkeleton } from './feed';
+import { getFeedSkeleton } from './feed';
 import { registerAccount, validateRegisterForm } from './register';
 import {
   JwtAuth,
@@ -9,6 +9,7 @@ import {
   validatePostURLForm,
 } from './bookmark';
 import { signUpPage } from './page';
+import { XrpcAuth } from './auth';
 
 const app = new Hono();
 app.get('/', (c) => c.html(signUpPage));
