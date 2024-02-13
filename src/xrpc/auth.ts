@@ -5,6 +5,7 @@ import { fetchPubkey, getPubkey, savePubkey } from '../pubkey';
 import { HTTPException } from 'hono/http-exception';
 import { createMiddleware } from 'hono/factory';
 import { ClientErrorStatusCode } from 'hono/utils/http-status';
+import { env } from 'hono/adapter';
 
 type Option =
   | {
@@ -24,11 +25,12 @@ export const XrpcAuth = (opt: Option) =>
     }
 
     let iss: string | undefined;
+    let aud: string | undefined;
     let exp: number | undefined;
     try {
-      const { payload } = decode(jwt);
-      iss = payload.iss;
-      exp = payload.exp;
+      ({
+        payload: { iss, exp, aud },
+      } = decode(jwt));
     } catch {
       throw clientError(c, 401, 'unauthorized', 'malformed token');
     }
@@ -36,6 +38,11 @@ export const XrpcAuth = (opt: Option) =>
     if (!exp || !iss || exp * 1000 < Date.now()) {
       // invalid jwt
       throw clientError(c, 401, 'unauthorized', 'invalid token payload');
+    }
+
+    const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
+    if (aud !== `did:web:${FEED_HOST}`) {
+      throw clientError(c, 401, 'unauthorized', 'malformed token');
     }
 
     const pubkey = await getPubkey(c, iss);
