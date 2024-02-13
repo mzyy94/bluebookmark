@@ -5,7 +5,10 @@ import { bookmarks } from './schema';
 import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
 
 export async function getFeedSkeleton(c: Context) {
-  const iss = c.get('iss');
+  const iss: string | undefined = c.get('iss');
+  if (!iss) {
+    return c.json({ feed: [] });
+  }
   const { DB } = env<{ DB: D1Database }>(c);
   const db = drizzle(DB);
 

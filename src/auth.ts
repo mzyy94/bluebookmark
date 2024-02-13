@@ -4,8 +4,14 @@ import { verifyJwt } from './verify';
 import { fetchPubkey, getPubkey, savePubkey } from './pubkey';
 import { HTTPException } from 'hono/http-exception';
 
+type Option =
+  | {
+      allowGuest?: boolean;
+    }
+  | undefined;
+
 // https://atproto.com/specs/xrpc#inter-service-authentication-temporary-specification
-export async function XrpcAuth(c: Context, next: Next) {
+export const XrpcAuth = (opt: Option) => async (c: Context, next: Next) => {
   const jwt = c.req
     .header('Authorization')
     ?.match(/^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)/)?.[1];
@@ -43,8 +49,12 @@ export async function XrpcAuth(c: Context, next: Next) {
 
   const pubkey = await getPubkey(c, iss);
   if (!pubkey) {
-    // not registered, return empty feed
-    throw new HTTPException(200, { res: c.json({ feed: [] }) });
+    if (opt?.allowGuest) {
+      // not registered. handle next handler with undefined 'iss'
+      await next();
+      return;
+    }
+    throw new HTTPException(403, { message: 'Forbidden' });
   }
 
   const verified = await verifyJwt(jwt, pubkey);
@@ -70,4 +80,4 @@ export async function XrpcAuth(c: Context, next: Next) {
 
   c.set('iss', iss);
   await next();
-}
+};
