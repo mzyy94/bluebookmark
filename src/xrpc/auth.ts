@@ -1,11 +1,11 @@
 import type { Context } from 'hono';
-import { decode } from 'hono/jwt';
-import { verifyJwt } from './verify';
-import { fetchPubkey, getPubkey, savePubkey } from '../pubkey';
-import { HTTPException } from 'hono/http-exception';
-import { createMiddleware } from 'hono/factory';
-import { ClientErrorStatusCode } from 'hono/utils/http-status';
 import { env } from 'hono/adapter';
+import { createMiddleware } from 'hono/factory';
+import { HTTPException } from 'hono/http-exception';
+import { decode } from 'hono/jwt';
+import type { ClientErrorStatusCode } from 'hono/utils/http-status';
+import { fetchPubkey, getPubkey, savePubkey } from '../pubkey';
+import { verifyJwt } from './verify';
 
 type Option =
   | {

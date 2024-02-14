@@ -1,7 +1,7 @@
-import { decode } from 'hono/jwt';
 import { verify } from '@noble/secp256k1';
 // @ts-expect-error no .d.ts
 import { base58_to_binary } from 'base58-js';
+import { decode } from 'hono/jwt';
 
 export async function verifyJwt(jwt: string, pubkey: string) {
   if (!pubkey.startsWith('z') || pubkey.length !== 49) {

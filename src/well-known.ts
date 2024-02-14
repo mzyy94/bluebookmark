@@ -1,7 +1,7 @@
 import { env } from 'hono/adapter';
-import { HTTPException } from 'hono/http-exception';
-import { createFactory } from 'hono/factory';
 import { cache } from 'hono/cache';
+import { createFactory } from 'hono/factory';
+import { HTTPException } from 'hono/http-exception';
 
 const factory = createFactory();
 

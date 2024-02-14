@@ -1,13 +1,13 @@
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
-import { jwt } from 'hono/jwt';
+import { and, count, eq, sql } from 'drizzle-orm';
+import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
-import { GetRecord } from '../at-proto';
 import { hc } from 'hono/client';
 import { createFactory } from 'hono/factory';
-import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
+import { jwt } from 'hono/jwt';
+import { z } from 'zod';
+import type { GetRecord } from '../at-proto';
 import { bookmarks } from '../schema';
-import { and, count, eq, sql } from 'drizzle-orm';
 
 const factory = createFactory();
 

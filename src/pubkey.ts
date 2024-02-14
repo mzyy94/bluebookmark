@@ -1,7 +1,7 @@
 import { Context } from 'hono';
-import type { DescribeRepo, DidDoc } from './at-proto';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
+import type { DescribeRepo, DidDoc } from './at-proto';
 
 export function findPubkey(didDoc: DidDoc): string | null {
   for (const method of didDoc.verificationMethod) {
