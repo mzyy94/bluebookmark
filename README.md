@@ -195,7 +195,7 @@ sequenceDiagram
     break verification failed
         Cloudflare->>User: respond unauthorized
     end
-    Cloudflare->>Cloudflare: search Post uri from DB
+    Cloudflare->>Cloudflare: search Post uri from cache
     opt if not found
         Cloudflare->>Bluesky: XRPC describeRepo
         Note right of Cloudflare: Post URL
@@ -219,13 +219,13 @@ sequenceDiagram
     break verification failed
         Cloudflare->>User: respond unauthorized
     end
-    Cloudflare->>Cloudflare: search bookmark based on Post URL
+    Cloudflare->>Cloudflare: search Post uri from cache
     opt if not found
         Cloudflare->>Bluesky: XRPC describeRepo
         Note right of Cloudflare: Post URL
         Bluesky->>Cloudflare: respond Post uri
-        Cloudflare->>Cloudflare: search bookmark based on Post uri
     end
+		Cloudflare->>Cloudflare: search bookmark based on Post uri
     Cloudflare->>Cloudflare: set isDeleted = true
     Cloudflare->>User: respond OK
 ```
