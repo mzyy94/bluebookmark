@@ -61,7 +61,9 @@ export const XrpcAuth = (opt: Option) =>
       throw authError(c, 403, 'forbidden', 'access forbidden');
     }
 
-    const verified = await verifyJwt(jwt, pubkey);
+    const verified = await verifyJwt(jwt, pubkey).catch(() => {
+      throw authError(c, 401, 'unauthorized', 'malformed token');
+    });
     if (!verified) {
       // refresh did key and re-verify
       const pubkey = await fetchPubkey(iss);
