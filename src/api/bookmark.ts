@@ -41,24 +41,45 @@ const validatePostURLForm = zValidator(
   }),
 );
 
-async function getPostRecord(
-  db: ReturnType<typeof drizzle>,
-  repo: string,
-  rkey: string,
-) {
+type PostRecord = {
+  uri: string;
+  cid: string;
+  repo: string;
+  rkey: string;
+};
+
+async function getPostRecord(db: DrizzleD1Database, url: URL) {
+  const cache = await caches.open('post-record');
+  const req = new Request(url);
+  const cached = await cache.match(req);
+  if (cached) {
+    return cached.json<PostRecord>();
+  }
+
+  const [, , repo, , rkey] = url.pathname.split('/');
   const result = await db
     .select({ uri: bookmarks.uri, cid: bookmarks.cid })
     .from(bookmarks)
     .where(and(eq(bookmarks.repo, repo), eq(bookmarks.rkey, rkey)))
     .get();
+
   if (result) {
-    return result;
+    const record: PostRecord = { repo, rkey, ...result };
+    const res = new Response(JSON.stringify(record));
+    await cache.put(req, res);
+    return record;
   }
+
   const res = await hc<GetRecord>('https://bsky.social').xrpc[
     'com.atproto.repo.getRecord'
   ].$get({ query: { repo, collection: 'app.bsky.feed.post', rkey } });
+
   if (res.ok) {
-    return res.json();
+    const result = await res.json();
+    const record: PostRecord = { repo, rkey, ...result };
+    const resp = new Response(JSON.stringify(record));
+    await cache.put(req, resp);
+    return record;
   }
   return null;
 }
@@ -84,7 +105,6 @@ export const postBookmarkHandlers = factory.createHandlers(
   async (c) => {
     const form = c.req.valid('form');
     const url = new URL(form.url);
-    const [, , repo, , rkey] = url.pathname.split('/');
 
     const { sub } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
@@ -99,11 +119,11 @@ export const postBookmarkHandlers = factory.createHandlers(
       return c.json({ error: 'bookmark limit reached', params: { url } }, 405);
     }
 
-    const record = await getPostRecord(db, repo, rkey);
+    const record = await getPostRecord(db, url);
     if (!record) {
       return c.json({ error: 'post not found', params: { url } }, 404);
     }
-    const { uri, cid } = record;
+    const { repo, rkey, uri, cid } = record;
 
     // Check whether already bookmarked
     const result = await findBookmark(db, sub, uri);
@@ -133,13 +153,12 @@ export const deleteBookmarkHandlers = factory.createHandlers(
   async (c) => {
     const form = c.req.valid('form');
     const url = new URL(form.url);
-    const [, , repo, , rkey] = url.pathname.split('/');
 
     const { sub } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    const record = await getPostRecord(db, repo, rkey);
+    const record = await getPostRecord(db, url);
     if (!record) {
       return c.json({ error: 'post not found', params: { url } }, 404);
     }
