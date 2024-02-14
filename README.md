@@ -17,7 +17,7 @@ Bookmark feed for Bluesky, a serverless application running on Cloudflare Worker
 
 1. Get a token from the top page
 2. Install iOS shortcut
-  - e.g. https://www.icloud.com/shortcuts/2a02de3a3a0e41d29e88bf461eb8daa3
+  - e.g. https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51
 3. Bookmark Bluesky post from share menu
 4. Refresh bookmark feed
 
