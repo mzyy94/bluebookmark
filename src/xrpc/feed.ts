@@ -12,6 +12,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
   async (c) => {
     const iss: string | undefined = c.get('iss');
     if (!iss) {
+      const { WELCOME_POST } = env<{ WELCOME_POST: string | undefined }>(c);
+      if (WELCOME_POST) {
+        return c.json({ feed: [{ post: WELCOME_POST }] });
+      }
       return c.json({ feed: [] });
     }
     const { DB } = env<{ DB: D1Database }>(c);
