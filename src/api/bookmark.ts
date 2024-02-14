@@ -7,7 +7,7 @@ import { hc } from 'hono/client';
 import { createFactory } from 'hono/factory';
 import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
 import { bookmarks } from '../schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, count, eq, sql } from 'drizzle-orm';
 
 const factory = createFactory();
 
@@ -89,6 +89,15 @@ export const postBookmarkHandlers = factory.createHandlers(
     const { sub } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
+
+    const total = await db
+      .select({ value: count() })
+      .from(bookmarks)
+      .where(eq(bookmarks.sub, sub));
+    if (total[0].value > 1000) {
+      // bookmark limit reached. only DELETE request is allowed for this user.
+      return c.json({ error: 'bookmark limit reached', params: { url } }, 405);
+    }
 
     const record = await getPostRecord(db, repo, rkey);
     if (!record) {
