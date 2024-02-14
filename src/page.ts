@@ -71,7 +71,7 @@ export const signUpPage = html`<!doctype html>
     <div>
       <input id="token" onfocus="this.select()">
       <p>Copy this token and paste on to bookmark shortcut</p>
-      <p>iOS shortcut: <a href="" target="_blank">Download</a></p>
+      <p>iOS shortcut: <a href="https://www.icloud.com/shortcuts/2a02de3a3a0e41d29e88bf461eb8daa3" target="_blank">Download</a></p>
     </div>
   </div>
 </body>
