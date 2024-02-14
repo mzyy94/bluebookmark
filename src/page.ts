@@ -58,9 +58,9 @@ export const signUpPage = html`<!doctype html>
     <form action="/api/register" method="post" autocapitalize="none" onsubmit="return register()">
       <fieldset>
         <label for="nameField">Handle Name</label>
-        <input type="text" placeholder="username.bsky.social" id="nameField" name="handle" required>
+        <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField" name="handle" required>
         <label for="passField">App Password</label>
-        <input type="password" placeholder="bsky-app-pass-word" id="passField" name="password" required>
+        <input type="password" autocomplete="current-password" placeholder="bsky-app-pass-word" id="passField" name="password" required>
         <div class="float-right">
           <input type="checkbox" id="copyToken" checked>
           <label class="label-inline" for="copyToken">Copy token on complete</label>
