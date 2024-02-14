@@ -10,33 +10,32 @@ export const signUpPage = html`<!doctype html>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
 
   <script>
-  function register() {
+  async function register() {
     const form = document.querySelector('form');
     const formData = new FormData(form);
     const request = new Request(form.action, {
       method: form.method,
       body: formData,
     });
-    fetch(request).then(async (res) => {
-      if (res.ok) {
-        const { token } = await res.json();
-        document.querySelector('#token').value = token;
-        document.querySelector('#token').setAttribute('value', token);
-        if (document.querySelector('#copyToken').checked) {
-          navigator.clipboard.writeText(token).then(
+    const res = await fetch(request)
+    if (res.ok) {
+      const { token } = await res.json();
+      document.querySelector('#token').value = token;
+      document.querySelector('#token').setAttribute('value', token);
+      if (document.querySelector('#copyToken').checked) {
+        setTimeout(async () =>
+          await navigator.clipboard.writeText(token).then(
             () => alert('Token copied!'),
             () => alert('Token copy failed'),
-          );
-        }
-      } else {
-        const { error } = await res
-          .json()
-          .catch(() => ({ error: 'unknown error' }));
-        alert('Login error: ' + error);
+          )
+        , 0);
       }
-    });
-
-    return false;
+    } else {
+      const { error } = await res
+        .json()
+        .catch(() => ({ error: 'unknown error' }));
+      alert('Login error: ' + error);
+    }
   }
   </script>
   <style>
@@ -55,7 +54,7 @@ export const signUpPage = html`<!doctype html>
 <body>
   <div class="container">
     <h1>BlueBookmark</h1>
-    <form action="/api/register" method="post" autocapitalize="none" onsubmit="return register()">
+    <form action="/api/register" method="post" autocapitalize="none" onsubmit="register(); return false">
       <fieldset>
         <label for="nameField">Handle Name</label>
         <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField" name="handle" required>
