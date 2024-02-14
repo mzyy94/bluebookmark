@@ -22,9 +22,9 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const db = drizzle(DB);
 
     const limit = parseInt(c.req.query('limit') ?? '50', 10);
-    const [time, cid] = c.req.query('cursor')?.match(/^(\d+)::([\w]+)$/) ?? [];
+    const [, time, cid] = c.req.query('cursor')?.match(/^(\d+)::(\w+)$/) ?? [];
     const filters =
-      time && cid
+      +time && cid
         ? [
             lte(sql`unixepoch(${bookmarks.updatedAt})`, +time),
             ne(bookmarks.cid, cid),
