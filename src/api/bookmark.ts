@@ -7,6 +7,7 @@ import { createFactory } from 'hono/factory';
 import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import type { GetRecord } from '../at-proto';
+import { openPostRecordCache } from '../cache';
 import { bookmarks } from '../schema';
 
 const factory = createFactory();
@@ -49,8 +50,7 @@ type PostRecord = {
 };
 
 async function getPostRecord(db: DrizzleD1Database, url: URL) {
-  const cache = await caches.open('post-record');
-  const req = new Request(url);
+  const { cache, req } = await openPostRecordCache(url);
   const cached = await cache.match(req);
   if (cached) {
     return cached.json<PostRecord>();
