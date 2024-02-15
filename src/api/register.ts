@@ -38,21 +38,22 @@ export const registerAccount = factory.createHandlers(
   validateRegisterForm,
   async (c) => {
     const { handle, password } = c.req.valid('form');
+    const identifier = handle.startsWith('@') ? handle.slice(1) : handle;
     const res = await hc<CreateSession>('https://bsky.social').xrpc[
       'com.atproto.server.createSession'
-    ].$post({ json: { identifier: handle, password } });
+    ].$post({ json: { identifier, password } });
 
     if (!res.ok) {
       return c.json({ error: 'authentication failed' }, 400);
     }
 
     const { did, handle: handleName, didDoc, accessJwt } = await res.json();
-    if (handle !== handleName) {
+    if (identifier !== handleName) {
       return c.json({ error: 'unexpected handle name' }, 400);
     }
 
     const { FEED_OWNER } = env<{ FEED_OWNER: string }>(c);
-    if (handle !== FEED_OWNER) {
+    if (identifier !== FEED_OWNER) {
       const ok = await checkFollowingFeedOwner(FEED_OWNER, accessJwt);
       if (!ok) {
         return c.json({ error: 'forbidden' }, 403);
