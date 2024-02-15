@@ -23,7 +23,7 @@ Bookmark feed for Bluesky, a serverless application running on Cloudflare Worker
 
 ## Limitation
 - Android is not yet supported.
-- Restricted to only be available to the feed creator and mutual follows (because it is running on a Free Cloudflare Workers plan).
+- Restricted to only be available for user who follows a feed owner (because it is designed for running on a Free Cloudflare Workers plan).
 - A limit on how many bookmarks can be added per person, and once the limit is reached, no more bookmarks can be added.
 
 ## API
@@ -64,7 +64,7 @@ Delete a bookmark. On success, a JSON response is returned with a status code of
 ### Requirements
 - Bluesky account
 - Cloudflare account
-- GitHub acctoun
+- GitHub account
 - [wrangler](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - [pnpm](https://pnpm.io)
 
@@ -170,11 +170,12 @@ sequenceDiagram
     Note right of Cloudflare: Handle Name and App Password
     Bluesky->>Cloudflare: respond did and accessToken
     Cloudflare->>Bluesky: XRPC getProfile of feed owner
-    Bluesky->>Cloudflare: respond user profile and status
-    Cloudflare->>Cloudflare: check followed/following state
-    break when user is not in F/F
+    Bluesky->>Cloudflare: respond user profile and following status
+    Cloudflare->>Cloudflare: check following state
+    break if user does not follow feed owner
         Cloudflare->>User: respond forbidden
     end
+    Cloudflare->>Cloudflare: cache publick key
     Cloudflare->>User: respond token
     Note left of Cloudflare: Token
 ```
@@ -225,7 +226,7 @@ sequenceDiagram
         Note right of Cloudflare: Post URL
         Bluesky->>Cloudflare: respond Post uri
     end
-		Cloudflare->>Cloudflare: search bookmark based on Post uri
+    Cloudflare->>Cloudflare: search bookmark based on Post uri
     Cloudflare->>Cloudflare: set isDeleted = true
     Cloudflare->>User: respond OK
 ```
@@ -238,14 +239,16 @@ sequenceDiagram
     actor User
     participant Bluesky
     participant Cloudflare as Cloudflare Worker
-    User->>Bluesky: Request bookmark custom feed
-    Bluesky->>Cloudflare: Get bookmark custom feed
+    User->>Bluesky: request bookmark custom feed
+    Bluesky->>Cloudflare: get bookmark custom feed
     Note right of Bluesky: Signed token
+    Cloudflare->>Cloudflare: get publick key from cache
     Cloudflare->>Cloudflare: verify token
     opt if verification failed, refresh public key
         Cloudflare->>Bluesky: XRPC describeRepo
         Bluesky->>Cloudflare: respond new public key
         Cloudflare->>Cloudflare: re-verify user
+        Cloudflare->>Cloudflare: cache publick key
     end
     Cloudflare->>Cloudflare: search posts in bookmark
     Cloudflare->>Bluesky: respond list of bookmarked posts
