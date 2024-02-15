@@ -21,7 +21,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    const limit = parseInt(c.req.query('limit') ?? '50', 10);
+    // Max 100 posts. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json#L17-L22
+    const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 100);
     const [, time, cid] = c.req.query('cursor')?.match(/^(\d+)::(\w+)$/) ?? [];
     const filters =
       +time && cid
