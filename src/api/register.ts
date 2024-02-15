@@ -31,7 +31,7 @@ async function checkFollowingFeedOwner(actor: string, token: string) {
   if (viewer.blockedBy || viewer.muted || viewer.blocking) {
     return false;
   }
-  return viewer.followedBy && viewer.following;
+  return !!viewer.following;
 }
 
 export const registerAccount = factory.createHandlers(
