@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
+import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
 import { createFactory } from 'hono/factory';
@@ -67,6 +67,21 @@ async function getPostRecord(url: URL) {
   return null;
 }
 
+function markLastUpdate(
+  db: DrizzleD1Database,
+  result: typeof bookmarks.$inferSelect,
+) {
+  return db
+    .insert(bookmarks)
+    .values({ ...result, uri: 'last_updated', control: ControlMode.Control })
+    .onConflictDoUpdate({
+      target: [bookmarks.uri, bookmarks.sub],
+      set: {
+        updatedAt: sql`(DATETIME('now', 'localtime'))`,
+      },
+    });
+}
+
 export const postBookmarkHandlers = factory.createHandlers(
   JwtAuthErrorJson,
   JwtAuth,
@@ -99,15 +114,7 @@ export const postBookmarkHandlers = factory.createHandlers(
       .returning();
 
     if (result) {
-      await db
-        .insert(bookmarks)
-        .values({ ...result, uri: 'added', control: ControlMode.LastAdded })
-        .onConflictDoUpdate({
-          target: [bookmarks.uri, bookmarks.sub],
-          set: {
-            updatedAt: sql`(DATETIME('now', 'localtime'))`,
-          },
-        });
+      await markLastUpdate(db, result);
       return c.json({ status: 'created', params: { url } }, 201);
     }
     return c.json({ error: 'already bookmarked', params: { url } }, 409);
@@ -148,15 +155,7 @@ export const deleteBookmarkHandlers = factory.createHandlers(
       .returning();
 
     if (result) {
-      await db
-        .insert(bookmarks)
-        .values({ ...result, uri: 'deleted', control: ControlMode.LastDeleted })
-        .onConflictDoUpdate({
-          target: [bookmarks.uri, bookmarks.sub],
-          set: {
-            updatedAt: sql`(DATETIME('now', 'localtime'))`,
-          },
-        });
+      await markLastUpdate(db, result);
       return c.json({ status: 'deleted', params: { url } }, 200);
     }
     return c.json({ error: 'bookmark not found', params: { url } }, 404);

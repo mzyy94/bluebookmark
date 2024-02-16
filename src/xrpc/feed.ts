@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import { and, eq, gt, or, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
@@ -53,8 +53,21 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const { limit, cursor } = c.req.valid('query');
     const [, , cid] = cursor ?? [];
 
+    const ctrlRow = await db
+      .select({
+        updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
+      })
+      .from(bookmarks)
+      .where(and(eq(bookmarks.sub, iss), eq(bookmarks.uri, 'last_updated')))
+      .get();
+
     let { allFeed, lastUpdate } = await getAllFeedFromCache(c, iss);
-    if (!allFeed || !lastUpdate) {
+    if (
+      !allFeed ||
+      !lastUpdate ||
+      (ctrlRow && ctrlRow.updatedAt > (lastUpdate || 0))
+    ) {
+      // cache is not fresh
       allFeed = await db
         .select({
           post: bookmarks.uri,
@@ -74,37 +87,6 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       }
       allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
       await putAllFeedToCache(c, iss, allFeed);
-    } else {
-      const diff = await db
-        .select({
-          control: bookmarks.control,
-          post: bookmarks.uri,
-          cid: bookmarks.cid,
-          updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
-        })
-        .from(bookmarks)
-        .limit(1000)
-        .where(
-          and(
-            eq(bookmarks.sub, iss),
-            or(
-              eq(bookmarks.control, ControlMode.Deleted),
-              eq(bookmarks.control, ControlMode.Active),
-            ),
-            gt(sql`unixepoch(${bookmarks.updatedAt})`, lastUpdate),
-          ),
-        );
-      if (diff.length > 0) {
-        const added = diff.filter((d) => d.control === ControlMode.Active);
-        const deleted = diff
-          .filter((d) => d.control === ControlMode.Deleted)
-          .map((d) => d.post);
-        allFeed = allFeed
-          .concat(added)
-          .filter((f) => !deleted.includes(f.post));
-        allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
-        await putAllFeedToCache(c, iss, allFeed);
-      }
     }
 
     const index = allFeed.findIndex((a) => a.cid === cid);
