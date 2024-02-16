@@ -7,6 +7,10 @@ import { XrpcAuth } from './auth';
 
 const factory = createFactory();
 
+function createCursor(item: { cid: string; updatedAt: number } | undefined) {
+  return item ? `${item.updatedAt}::${item.cid}` : undefined;
+}
+
 export const getFeedSkeletonHandlers = factory.createHandlers(
   XrpcAuth({ allowGuest: true }),
   async (c) => {
@@ -36,7 +40,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       .select({
         uri: bookmarks.uri,
         cid: bookmarks.cid,
-        updatedAt: sql`unixepoch(${bookmarks.updatedAt})`,
+        updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
       })
       .from(bookmarks)
       .orderBy(desc(bookmarks.updatedAt))
@@ -47,9 +51,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     const feed = result.map((item) => ({ post: item.uri }));
     const lastPost = result[result.length - 1];
-    const cursor = lastPost
-      ? `${lastPost.updatedAt}::${lastPost.cid}`
-      : undefined;
+    const cursor = createCursor(lastPost);
     return c.json({ cursor, feed });
   },
 );
