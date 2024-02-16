@@ -1,7 +1,9 @@
+import { zValidator } from '@hono/zod-validator';
 import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
+import { z } from 'zod';
 import { bookmarks } from '../schema';
 import { XrpcAuth } from './auth';
 
@@ -11,8 +13,27 @@ function createCursor(item: { cid: string; updatedAt: number } | undefined) {
   return item ? `${item.updatedAt}::${item.cid}` : undefined;
 }
 
+// ref. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json
+const validateQuery = zValidator(
+  'query',
+  z.object({
+    feed: z.string(),
+    limit: z
+      .string()
+      .default('50')
+      .transform((s) => parseFloat(s))
+      .pipe(z.number().int().min(1).max(100)),
+    cursor: z
+      .string()
+      .regex(/(^$|^\d+::\w+$)/)
+      .transform((s) => s.match(/^(\d+)::(\w+)$/))
+      .optional(),
+  }),
+);
+
 export const getFeedSkeletonHandlers = factory.createHandlers(
   XrpcAuth({ allowGuest: true }),
+  validateQuery,
   async (c) => {
     const iss: string | undefined = c.get('iss');
     if (!iss) {
@@ -25,9 +46,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    // Max 100 posts. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json#L17-L22
-    const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 100);
-    const [, time, cid] = c.req.query('cursor')?.match(/^(\d+)::(\w+)$/) ?? [];
+    const { limit, cursor } = c.req.valid('query');
+    const [, time, cid] = cursor ?? [];
     const filters =
       +time && cid
         ? [
@@ -51,7 +71,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     const feed = result.map((item) => ({ post: item.uri }));
     const lastPost = result[result.length - 1];
-    const cursor = createCursor(lastPost);
-    return c.json({ cursor, feed });
+    const lastCur = createCursor(lastPost);
+    return c.json({ cursor: lastCur, feed });
   },
 );
