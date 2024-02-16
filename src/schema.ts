@@ -9,6 +9,8 @@ import {
 export enum ControlMode {
   Active = 0,
   Deleted = 1,
+  LastAdded = 2,
+  LastDeleted = 3,
 }
 
 export const bookmarks = sqliteTable(

@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
+import { ControlMode } from './schema';
 
 const pubkeyCacheKey = (did: string) =>
   new Request(
@@ -26,47 +27,57 @@ export async function openPostRecordCache(url: URL) {
   return { req, cache };
 }
 
-const feedSkeletonCacheKey = (
+const feedCacheKey = (
   c: Context,
   iss: string,
-  limit: number,
-  begin: string | undefined,
-  end: string,
+  marker: { control: ControlMode; updatedAt: number }[],
 ) => {
+  const added = marker.find(
+    (m) => m.control === ControlMode.LastAdded,
+  )?.updatedAt;
+  const deleted = marker.find(
+    (m) => m.control === ControlMode.LastDeleted,
+  )?.updatedAt;
+  if (!added || !deleted) {
+    return null;
+  }
   const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
   const url = new URL(
     `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal`,
   );
   url.searchParams.append('iss', iss);
-  url.searchParams.append('limit', limit.toString(10));
-  if (begin) {
-    url.searchParams.append('begin', begin);
-  }
-  url.searchParams.append('end', end);
+  url.searchParams.append('added', added.toString(10));
+  url.searchParams.append('deleted', deleted.toString(10));
   return new Request(url);
 };
 
-export async function getFeedSkeletonFromCache(
+type AllFeed = { post: string; cid: string; updatedAt: number }[];
+
+export async function getAllFeedFromCache(
   c: Context,
   iss: string,
-  limit: number,
-  begin: string | undefined,
-  end: string,
+  marker: { control: ControlMode; updatedAt: number }[],
 ) {
-  const cache = await caches.open('feed-skeleton');
-  const req = feedSkeletonCacheKey(c, iss, limit, begin, end);
-  return cache.match(req);
+  const cache = await caches.open('feed-cache');
+  const req = feedCacheKey(c, iss, marker);
+  if (!req) {
+    return null;
+  }
+  const res = await cache.match(req);
+  return res?.json<AllFeed>();
 }
 
-export async function putFeedSkeletonToCache(
+export async function putAllFeedToCache(
   c: Context,
   iss: string,
-  limit: number,
-  begin: string | undefined,
-  end: string,
-  res: Response,
+  marker: { control: ControlMode; updatedAt: number }[],
+  allFeed: AllFeed,
 ) {
-  const cache = await caches.open('feed-skeleton');
-  const req = feedSkeletonCacheKey(c, iss, limit, begin, end);
+  const cache = await caches.open('feed-cache');
+  const req = feedCacheKey(c, iss, marker);
+  if (!req) {
+    return null;
+  }
+  const res = new Response(JSON.stringify(allFeed));
   return cache.put(req, res);
 }

@@ -1,10 +1,10 @@
 import { zValidator } from '@hono/zod-validator';
-import { and, desc, eq, lte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, lte, ne, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
 import { z } from 'zod';
-import { getFeedSkeletonFromCache, putFeedSkeletonToCache } from '../cache';
+import { getAllFeedFromCache, putAllFeedToCache } from '../cache';
 import { ControlMode, bookmarks } from '../schema';
 import { XrpcAuth } from './auth';
 
@@ -52,6 +52,53 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     const { limit, cursor } = c.req.valid('query');
     const [begin, time, cid] = cursor ?? [];
+
+    const cacheMarkers = await db
+      .select({
+        control: bookmarks.control,
+        updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
+      })
+      .from(bookmarks)
+      .where(
+        or(
+          eq(bookmarks.control, ControlMode.LastAdded),
+          eq(bookmarks.control, ControlMode.LastDeleted),
+        ),
+      );
+
+    if (cacheMarkers.length === 2) {
+      let allFeed = await getAllFeedFromCache(c, iss, cacheMarkers);
+      if (!allFeed) {
+        allFeed = await db
+          .select({
+            post: bookmarks.uri,
+            cid: bookmarks.cid,
+            updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
+          })
+          .from(bookmarks)
+          .limit(1000)
+          .where(
+            and(
+              eq(bookmarks.sub, iss),
+              eq(bookmarks.control, ControlMode.Active),
+            ),
+          );
+        if (allFeed.length === 0) {
+          return c.json({ feed: [] });
+        }
+        allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
+        await putAllFeedToCache(c, iss, cacheMarkers, allFeed);
+      }
+
+      allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
+      const index = allFeed.findIndex((a) => a.cid === cid);
+      const result = allFeed.slice(index + 1, index + 1 + limit);
+      const feed = result.map(({ post }) => ({ post }));
+      const lastPost = result[result.length - 1];
+      const lastCur = createCursor(lastPost);
+      return c.json({ cursor: lastCur, feed });
+    }
+
     const filters =
       +time && cid
         ? [
@@ -60,7 +107,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           ]
         : [];
 
-    const prepared = db
+    const result = await db
       .select({
         post: bookmarks.uri,
         cid: bookmarks.cid,
@@ -68,49 +115,19 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       })
       .from(bookmarks)
       .orderBy(desc(bookmarks.updatedAt))
-      .limit(sql.placeholder('limit'))
-      .offset(sql.placeholder('offset'))
+      .limit(limit)
       .where(
         and(
           eq(bookmarks.sub, iss),
           eq(bookmarks.control, ControlMode.Active),
           ...filters,
         ),
-      )
-      .prepare();
-
-    const lastItem = await prepared.get({ limit: 1, offset: limit - 1 });
-
-    if (limit === 1) {
-      // skip cache check
-      return c.json({
-        cursor: createCursor(lastItem),
-        feed: [{ post: lastItem?.post }],
-      });
-    }
-
-    if (lastItem) {
-      const end = createCursor(lastItem);
-      const res = await getFeedSkeletonFromCache(c, iss, limit, begin, end);
-      if (res) {
-        // cache hit
-        return res;
-      }
-    }
-
-    const result = await prepared.all({ limit: limit - 1, offset: 0 });
-
-    if (lastItem) {
-      result.push(lastItem);
-    } else if (result.length === 0) {
-      return c.json({ feed: [] });
-    }
+      );
 
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
     const res = c.json({ cursor: lastCur, feed });
-    await putFeedSkeletonToCache(c, iss, limit, begin, lastCur, res.clone());
     return res;
   },
 );

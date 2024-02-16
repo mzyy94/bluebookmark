@@ -99,6 +99,15 @@ export const postBookmarkHandlers = factory.createHandlers(
       .returning();
 
     if (result) {
+      await db
+        .insert(bookmarks)
+        .values({ ...result, uri: 'added', control: ControlMode.LastAdded })
+        .onConflictDoUpdate({
+          target: [bookmarks.uri, bookmarks.sub],
+          set: {
+            updatedAt: sql`(DATETIME('now', 'localtime'))`,
+          },
+        });
       return c.json({ status: 'created', params: { url } }, 201);
     }
     return c.json({ error: 'already bookmarked', params: { url } }, 409);
@@ -139,6 +148,15 @@ export const deleteBookmarkHandlers = factory.createHandlers(
       .returning();
 
     if (result) {
+      await db
+        .insert(bookmarks)
+        .values({ ...result, uri: 'deleted', control: ControlMode.LastDeleted })
+        .onConflictDoUpdate({
+          target: [bookmarks.uri, bookmarks.sub],
+          set: {
+            updatedAt: sql`(DATETIME('now', 'localtime'))`,
+          },
+        });
       return c.json({ status: 'deleted', params: { url } }, 200);
     }
     return c.json({ error: 'bookmark not found', params: { url } }, 404);
