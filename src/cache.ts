@@ -27,46 +27,38 @@ export async function openPostRecordCache(url: URL) {
   return { req, cache };
 }
 
-const feedCacheKey = (
-  c: Context,
-  iss: string,
-  marker: { control: ControlMode; updatedAt: number }[],
-) => {
-  const added =
-    marker.find((m) => m.control === ControlMode.LastAdded)?.updatedAt ?? 0;
-  const deleted =
-    marker.find((m) => m.control === ControlMode.LastDeleted)?.updatedAt ?? 0;
+const feedCacheKey = (c: Context, iss: string) => {
   const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
   const url = new URL(
-    `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal`,
+    `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal=2`,
   );
   url.searchParams.append('iss', iss);
-  url.searchParams.append('added', added.toString(10));
-  url.searchParams.append('deleted', deleted.toString(10));
   return new Request(url);
 };
 
 type AllFeed = { post: string; cid: string; updatedAt: number }[];
 
-export async function getAllFeedFromCache(
-  c: Context,
-  iss: string,
-  marker: { control: ControlMode; updatedAt: number }[],
-) {
+export async function getAllFeedFromCache(c: Context, iss: string) {
   const cache = await caches.open('feed-cache');
-  const req = feedCacheKey(c, iss, marker);
+  const req = feedCacheKey(c, iss);
   const res = await cache.match(req);
-  return res?.json<AllFeed>();
+  if (!res) {
+    return { allFeed: null, lastUpdate: null };
+  }
+  const lastMod = res.headers.get('Last-Modified');
+  return {
+    allFeed: await res.json<AllFeed>(),
+    lastUpdate: lastMod && Date.parse(lastMod) / 1000,
+  };
 }
 
 export async function putAllFeedToCache(
   c: Context,
   iss: string,
-  marker: { control: ControlMode; updatedAt: number }[],
   allFeed: AllFeed,
 ) {
   const cache = await caches.open('feed-cache');
-  const req = feedCacheKey(c, iss, marker);
+  const req = feedCacheKey(c, iss);
   const res = new Response(JSON.stringify(allFeed));
   return cache.put(req, res);
 }

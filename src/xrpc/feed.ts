@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import { and, desc, eq, lte, ne, or, sql } from 'drizzle-orm';
+import { and, eq, gt, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
@@ -53,21 +53,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const { limit, cursor } = c.req.valid('query');
     const [, , cid] = cursor ?? [];
 
-    const cacheMarkers = await db
-      .select({
-        control: bookmarks.control,
-        updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
-      })
-      .from(bookmarks)
-      .where(
-        or(
-          eq(bookmarks.control, ControlMode.LastAdded),
-          eq(bookmarks.control, ControlMode.LastDeleted),
-        ),
-      );
-
-    let allFeed = await getAllFeedFromCache(c, iss, cacheMarkers);
-    if (!allFeed) {
+    let { allFeed, lastUpdate } = await getAllFeedFromCache(c, iss);
+    if (!allFeed || !lastUpdate) {
       allFeed = await db
         .select({
           post: bookmarks.uri,
@@ -86,7 +73,38 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         return c.json({ feed: [] });
       }
       allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
-      await putAllFeedToCache(c, iss, cacheMarkers, allFeed);
+      await putAllFeedToCache(c, iss, allFeed);
+    } else {
+      const diff = await db
+        .select({
+          control: bookmarks.control,
+          post: bookmarks.uri,
+          cid: bookmarks.cid,
+          updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
+        })
+        .from(bookmarks)
+        .limit(1000)
+        .where(
+          and(
+            eq(bookmarks.sub, iss),
+            or(
+              eq(bookmarks.control, ControlMode.Deleted),
+              eq(bookmarks.control, ControlMode.Active),
+            ),
+            gt(sql`unixepoch(${bookmarks.updatedAt})`, lastUpdate),
+          ),
+        );
+      if (diff.length > 0) {
+        const added = diff.filter((d) => d.control === ControlMode.Active);
+        const deleted = diff
+          .filter((d) => d.control === ControlMode.Deleted)
+          .map((d) => d.post);
+        allFeed = allFeed
+          .concat(added)
+          .filter((f) => !deleted.includes(f.post));
+        allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
+        await putAllFeedToCache(c, iss, allFeed);
+      }
     }
 
     const index = allFeed.findIndex((a) => a.cid === cid);
