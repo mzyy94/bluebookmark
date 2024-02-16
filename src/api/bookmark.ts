@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import { and, eq, sql } from 'drizzle-orm';
-import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
+import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
 import { createFactory } from 'hono/factory';
@@ -41,14 +41,11 @@ const validatePostURLForm = zValidator(
   }),
 );
 
-type PostRecord = {
-  uri: string;
-  cid: string;
-  repo: string;
-  rkey: string;
-};
+type PostRecord = Omit<typeof bookmarks.$inferInsert, 'sub'>;
 
-async function getPostRecord(db: DrizzleD1Database, url: URL) {
+async function getPostRecord(url: URL) {
+  url.search = '';
+  url.hash = '';
   const { cache, req } = await openPostRecordCache(url);
   const cached = await cache.match(req);
   if (cached) {
@@ -56,19 +53,6 @@ async function getPostRecord(db: DrizzleD1Database, url: URL) {
   }
 
   const [, , repo, , rkey] = url.pathname.split('/');
-  const result = await db
-    .select({ uri: bookmarks.uri, cid: bookmarks.cid })
-    .from(bookmarks)
-    .where(and(eq(bookmarks.repo, repo), eq(bookmarks.rkey, rkey)))
-    .get();
-
-  if (result) {
-    const record: PostRecord = { repo, rkey, ...result };
-    const res = new Response(JSON.stringify(record));
-    await cache.put(req, res);
-    return record;
-  }
-
   const res = await hc<GetRecord>('https://bsky.social').xrpc[
     'com.atproto.repo.getRecord'
   ].$get({ query: { repo, collection: 'app.bsky.feed.post', rkey } });
@@ -83,20 +67,6 @@ async function getPostRecord(db: DrizzleD1Database, url: URL) {
   return null;
 }
 
-function findBookmark(db: DrizzleD1Database, sub: string, uri: string) {
-  return db
-    .select()
-    .from(bookmarks)
-    .where(
-      and(
-        eq(bookmarks.sub, sub),
-        eq(bookmarks.uri, uri),
-        eq(bookmarks.isDeleted, false),
-      ),
-    )
-    .get();
-}
-
 export const postBookmarkHandlers = factory.createHandlers(
   JwtAuthErrorJson,
   JwtAuth,
@@ -109,30 +79,29 @@ export const postBookmarkHandlers = factory.createHandlers(
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    const record = await getPostRecord(db, url);
+    const record = await getPostRecord(url);
     if (!record) {
       return c.json({ error: 'post not found', params: { url } }, 404);
     }
     const { repo, rkey, uri, cid } = record;
 
-    // Check whether already bookmarked
-    const result = await findBookmark(db, sub, uri);
-
-    if (result) {
-      return c.json({ error: 'already bookmarked', params: { url } }, 409);
-    }
-
-    await db
+    const [result] = await db
       .insert(bookmarks)
       .values({ uri, cid, repo, rkey, sub })
       .onConflictDoUpdate({
         target: [bookmarks.uri, bookmarks.sub],
+        where: eq(bookmarks.isDeleted, true),
         set: {
           isDeleted: false,
           updatedAt: sql`(DATETIME('now', 'localtime'))`,
         },
-      });
-    return c.json({ status: 'created', params: { url } }, 201);
+      })
+      .returning();
+
+    if (result) {
+      return c.json({ status: 'created', params: { url } }, 201);
+    }
+    return c.json({ error: 'already bookmarked', params: { url } }, 409);
   },
 );
 
@@ -148,24 +117,30 @@ export const deleteBookmarkHandlers = factory.createHandlers(
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
-    const record = await getPostRecord(db, url);
+    const record = await getPostRecord(url);
     if (!record) {
       return c.json({ error: 'post not found', params: { url } }, 404);
     }
     const { uri } = record;
 
-    const result = await findBookmark(db, sub, uri);
-    if (!result) {
-      return c.json({ error: 'bookmark not found', params: { url } }, 404);
-    }
-
-    await db
+    const [result] = await db
       .update(bookmarks)
       .set({
         isDeleted: true,
         updatedAt: sql`(DATETIME('now', 'localtime'))`,
       })
-      .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)));
-    return c.json({ status: 'deleted', params: { url } }, 200);
+      .where(
+        and(
+          eq(bookmarks.uri, uri),
+          eq(bookmarks.sub, sub),
+          eq(bookmarks.isDeleted, false),
+        ),
+      )
+      .returning();
+
+    if (result) {
+      return c.json({ status: 'deleted', params: { url } }, 200);
+    }
+    return c.json({ error: 'bookmark not found', params: { url } }, 404);
   },
 );
