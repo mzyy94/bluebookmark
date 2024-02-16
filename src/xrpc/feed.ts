@@ -51,7 +51,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const db = drizzle(DB);
 
     const { limit, cursor } = c.req.valid('query');
-    const [begin, time, cid] = cursor ?? [];
+    const [, , cid] = cursor ?? [];
 
     const cacheMarkers = await db
       .select({
@@ -66,68 +66,34 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         ),
       );
 
-    if (cacheMarkers.length === 2) {
-      let allFeed = await getAllFeedFromCache(c, iss, cacheMarkers);
-      if (!allFeed) {
-        allFeed = await db
-          .select({
-            post: bookmarks.uri,
-            cid: bookmarks.cid,
-            updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
-          })
-          .from(bookmarks)
-          .limit(1000)
-          .where(
-            and(
-              eq(bookmarks.sub, iss),
-              eq(bookmarks.control, ControlMode.Active),
-            ),
-          );
-        if (allFeed.length === 0) {
-          return c.json({ feed: [] });
-        }
-        allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
-        await putAllFeedToCache(c, iss, cacheMarkers, allFeed);
+    let allFeed = await getAllFeedFromCache(c, iss, cacheMarkers);
+    if (!allFeed) {
+      allFeed = await db
+        .select({
+          post: bookmarks.uri,
+          cid: bookmarks.cid,
+          updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
+        })
+        .from(bookmarks)
+        .limit(1000)
+        .where(
+          and(
+            eq(bookmarks.sub, iss),
+            eq(bookmarks.control, ControlMode.Active),
+          ),
+        );
+      if (allFeed.length === 0) {
+        return c.json({ feed: [] });
       }
-
       allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
-      const index = allFeed.findIndex((a) => a.cid === cid);
-      const result = allFeed.slice(index + 1, index + 1 + limit);
-      const feed = result.map(({ post }) => ({ post }));
-      const lastPost = result[result.length - 1];
-      const lastCur = createCursor(lastPost);
-      return c.json({ cursor: lastCur, feed });
+      await putAllFeedToCache(c, iss, cacheMarkers, allFeed);
     }
 
-    const filters =
-      +time && cid
-        ? [
-            lte(sql`unixepoch(${bookmarks.updatedAt})`, +time),
-            ne(bookmarks.cid, cid),
-          ]
-        : [];
-
-    const result = await db
-      .select({
-        post: bookmarks.uri,
-        cid: bookmarks.cid,
-        updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
-      })
-      .from(bookmarks)
-      .orderBy(desc(bookmarks.updatedAt))
-      .limit(limit)
-      .where(
-        and(
-          eq(bookmarks.sub, iss),
-          eq(bookmarks.control, ControlMode.Active),
-          ...filters,
-        ),
-      );
-
+    const index = allFeed.findIndex((a) => a.cid === cid);
+    const result = allFeed.slice(index + 1, index + 1 + limit);
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
-    const res = c.json({ cursor: lastCur, feed });
-    return res;
+    return c.json({ cursor: lastCur, feed });
   },
 );

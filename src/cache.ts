@@ -32,15 +32,10 @@ const feedCacheKey = (
   iss: string,
   marker: { control: ControlMode; updatedAt: number }[],
 ) => {
-  const added = marker.find(
-    (m) => m.control === ControlMode.LastAdded,
-  )?.updatedAt;
-  const deleted = marker.find(
-    (m) => m.control === ControlMode.LastDeleted,
-  )?.updatedAt;
-  if (!added || !deleted) {
-    return null;
-  }
+  const added =
+    marker.find((m) => m.control === ControlMode.LastAdded)?.updatedAt ?? 0;
+  const deleted =
+    marker.find((m) => m.control === ControlMode.LastDeleted)?.updatedAt ?? 0;
   const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
   const url = new URL(
     `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal`,
@@ -60,9 +55,6 @@ export async function getAllFeedFromCache(
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, marker);
-  if (!req) {
-    return null;
-  }
   const res = await cache.match(req);
   return res?.json<AllFeed>();
 }
@@ -75,9 +67,6 @@ export async function putAllFeedToCache(
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, marker);
-  if (!req) {
-    return null;
-  }
   const res = new Response(JSON.stringify(allFeed));
   return cache.put(req, res);
 }
