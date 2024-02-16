@@ -10,8 +10,11 @@ import { XrpcAuth } from './auth';
 
 const factory = createFactory();
 
-function createCursor(item: { cid: string; updatedAt: number } | undefined) {
-  return item ? `${item.updatedAt}::${item.cid}` : undefined;
+function createCursor<
+  T extends { cid: string; updatedAt: number } | undefined,
+  R = T extends NonNullable<T> ? string : undefined,
+>(item: T): R {
+  return item ? (`${item.updatedAt}::${item.cid}` as R) : (undefined as R);
 }
 
 // ref. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json
@@ -59,7 +62,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     const prepared = db
       .select({
-        uri: bookmarks.uri,
+        post: bookmarks.uri,
         cid: bookmarks.cid,
         updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
       })
@@ -72,28 +75,38 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       )
       .prepare();
 
-    if (limit > 1) {
-      const [lastItem] = await prepared.execute({
-        limit: 1,
-        offset: limit - 1,
+    const lastItem = await prepared.get({ limit: 1, offset: limit - 1 });
+
+    if (limit === 1) {
+      // skip cache check
+      return c.json({
+        cursor: createCursor(lastItem),
+        feed: [{ post: lastItem?.post }],
       });
-      if (lastItem) {
-        const end = createCursor(lastItem) as string;
-        const res = await getFeedSkeletonFromCache(c, iss, limit, begin, end);
-        if (res) {
-          return res;
-        }
+    }
+
+    if (lastItem) {
+      const end = createCursor(lastItem);
+      const res = await getFeedSkeletonFromCache(c, iss, limit, begin, end);
+      if (res) {
+        // cache hit
+        return res;
       }
     }
 
-    const result = await prepared.execute({ limit, offset: 0 });
-    const feed = result.map((item) => ({ post: item.uri }));
+    const result = await prepared.all({ limit: limit - 1, offset: 0 });
+
+    if (lastItem) {
+      result.push(lastItem);
+    } else if (result.length === 0) {
+      return c.json({ feed: [] });
+    }
+
+    const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
     const res = c.json({ cursor: lastCur, feed });
-    if (lastCur) {
-      await putFeedSkeletonToCache(c, iss, limit, begin, lastCur, res.clone());
-    }
+    await putFeedSkeletonToCache(c, iss, limit, begin, lastCur, res.clone());
     return res;
   },
 );
