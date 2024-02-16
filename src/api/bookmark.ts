@@ -23,9 +23,8 @@ const JwtAuth = factory.createMiddleware(async (c, next) => {
 const JwtAuthErrorJson = factory.createMiddleware(async (c, next) => {
   await next();
   if (c.res.status === 401) {
-    const res = c.res.clone();
-    const body = await res.text();
-    c.res = c.json({ error: body.toLowerCase() }, res);
+    const body = await c.res.text();
+    c.res = c.json({ error: body.toLowerCase() }, c.res);
   }
 });
 
