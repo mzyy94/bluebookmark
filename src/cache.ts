@@ -1,23 +1,22 @@
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
-import type { DidDoc } from './at-proto';
 
-const didDocCacheKey = (did: string) =>
+const pubkeyCacheKey = (did: string) =>
   new Request(
-    `https://bsky.social/xrpc/com.atproto.repo.describeRepo?repo=${did}`,
+    `https://bsky.social/xrpc/com.atproto.repo.describeRepo?repo=${did}&pubkey`,
   );
 
-export async function getDidDocFromCache(did: string) {
+export async function getPubkeyFromCache(did: string) {
   const cache = await caches.open('pubkey');
-  const req = didDocCacheKey(did);
+  const req = pubkeyCacheKey(did);
   const res = await cache.match(req);
-  return res?.json<DidDoc>();
+  return res?.text() ?? null;
 }
 
-export async function putDidDocToCache(didDoc: DidDoc) {
+export async function putPubkeyToCache(did: string, pubkey: string) {
   const cache = await caches.open('pubkey');
-  const req = didDocCacheKey(didDoc.id);
-  const res = new Response(JSON.stringify(didDoc));
+  const req = pubkeyCacheKey(did);
+  const res = new Response(pubkey);
   return cache.put(req, res);
 }
 

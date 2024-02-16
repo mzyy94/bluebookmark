@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
 import type { DescribeRepo, DidDoc } from './at-proto';
-import { getDidDocFromCache, putDidDocToCache } from './cache';
+import { getPubkeyFromCache, putPubkeyToCache } from './cache';
 
 export function findPubkey(didDoc: DidDoc): string | null {
   for (const method of didDoc.verificationMethod) {
@@ -17,6 +17,7 @@ export async function savePubkey(c: Context, did: string, pubkey: string) {
   if (!did || !pubkey) {
     return;
   }
+  await putPubkeyToCache(did, pubkey);
   const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
   await did_key_store.put(did, pubkey);
 }
@@ -24,11 +25,15 @@ export async function savePubkey(c: Context, did: string, pubkey: string) {
 export async function getPubkey(c: Context, did: string) {
   const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
 
-  const didDoc = await getDidDocFromCache(did);
-  if (didDoc) {
-    return findPubkey(didDoc);
+  let pubkey = await getPubkeyFromCache(did);
+  if (pubkey) {
+    return pubkey;
   }
-  return did_key_store.get(did);
+  pubkey = await did_key_store.get(did);
+  if (pubkey) {
+    await putPubkeyToCache(did, pubkey);
+  }
+  return pubkey;
 }
 
 export async function fetchPubkey(did: string) {
@@ -41,6 +46,5 @@ export async function fetchPubkey(did: string) {
     return null;
   }
   const { didDoc } = await res.json();
-  await putDidDocToCache(didDoc);
   return findPubkey(didDoc);
 }
