@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
 import { z } from 'zod';
+import { getFeedSkeletonFromCache, putFeedSkeletonToCache } from '../cache';
 import { bookmarks } from '../schema';
 import { XrpcAuth } from './auth';
 
@@ -47,7 +48,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const db = drizzle(DB);
 
     const { limit, cursor } = c.req.valid('query');
-    const [, time, cid] = cursor ?? [];
+    const [begin, time, cid] = cursor ?? [];
     const filters =
       +time && cid
         ? [
@@ -56,7 +57,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           ]
         : [];
 
-    const result = await db
+    const prepared = db
       .select({
         uri: bookmarks.uri,
         cid: bookmarks.cid,
@@ -64,14 +65,35 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       })
       .from(bookmarks)
       .orderBy(desc(bookmarks.updatedAt))
-      .limit(limit)
+      .limit(sql.placeholder('limit'))
+      .offset(sql.placeholder('offset'))
       .where(
         and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, false), ...filters),
-      );
+      )
+      .prepare();
 
+    if (limit > 1) {
+      const [lastItem] = await prepared.execute({
+        limit: 1,
+        offset: limit - 1,
+      });
+      if (lastItem) {
+        const end = createCursor(lastItem) as string;
+        const res = await getFeedSkeletonFromCache(c, iss, limit, begin, end);
+        if (res) {
+          return res;
+        }
+      }
+    }
+
+    const result = await prepared.execute({ limit, offset: 0 });
     const feed = result.map((item) => ({ post: item.uri }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
-    return c.json({ cursor: lastCur, feed });
+    const res = c.json({ cursor: lastCur, feed });
+    if (lastCur) {
+      await putFeedSkeletonToCache(c, iss, limit, begin, lastCur, res.clone());
+    }
+    return res;
   },
 );
