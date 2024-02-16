@@ -6,6 +6,6 @@ CREATE TABLE `bookmarks` (
 	`cid` text NOT NULL,
 	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL,
 	`updated_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL,
-	`deleted` integer DEFAULT false NOT NULL,
+	`deleted` integer DEFAULT 0 NOT NULL,
 	PRIMARY KEY(`sub`, `uri`)
 );

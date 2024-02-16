@@ -6,6 +6,11 @@ import {
   text,
 } from 'drizzle-orm/sqlite-core';
 
+export enum ControlMode {
+  Active = 0,
+  Deleted = 1,
+}
+
 export const bookmarks = sqliteTable(
   'bookmarks',
   {
@@ -20,7 +25,7 @@ export const bookmarks = sqliteTable(
     updatedAt: text('updated_at')
       .notNull()
       .default(sql`(DATETIME('now', 'localtime'))`),
-    isDeleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
+    control: integer('deleted').notNull().default(0).$type<ControlMode>(), // control field
   },
   (table) => ({ pk: primaryKey({ columns: [table.sub, table.uri] }) }),
 );

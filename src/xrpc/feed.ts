@@ -5,7 +5,7 @@ import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
 import { z } from 'zod';
 import { getFeedSkeletonFromCache, putFeedSkeletonToCache } from '../cache';
-import { bookmarks } from '../schema';
+import { ControlMode, bookmarks } from '../schema';
 import { XrpcAuth } from './auth';
 
 const factory = createFactory();
@@ -71,7 +71,11 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       .limit(sql.placeholder('limit'))
       .offset(sql.placeholder('offset'))
       .where(
-        and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, false), ...filters),
+        and(
+          eq(bookmarks.sub, iss),
+          eq(bookmarks.control, ControlMode.Active),
+          ...filters,
+        ),
       )
       .prepare();
 
