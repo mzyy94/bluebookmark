@@ -51,7 +51,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const db = drizzle(DB);
 
     const { limit, cursor } = c.req.valid('query');
-    const [, , cid] = cursor ?? [];
+    const [, time, cid] = cursor ?? [];
 
     const ctrlRow = await db
       .select({
@@ -89,8 +89,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       await putAllFeedToCache(c, iss, allFeed);
     }
 
-    const index = allFeed.findIndex((a) => a.cid === cid);
-    const result = allFeed.slice(index + 1, index + 1 + limit);
+    const index = time
+      ? allFeed.findIndex((a) => a.updatedAt <= +time && a.cid !== cid)
+      : 0;
+    const result = allFeed.slice(index, index + limit);
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
