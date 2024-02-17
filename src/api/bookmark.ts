@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import { and, eq, sql } from 'drizzle-orm';
-import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1';
+import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
 import { createFactory } from 'hono/factory';
@@ -8,7 +8,7 @@ import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import type { GetRecord } from '../at-proto';
 import { openPostRecordCache } from '../cache';
-import { ControlMode, bookmarks } from '../schema';
+import { ControlMode, bookmarks, operations } from '../schema';
 
 const factory = createFactory();
 
@@ -67,21 +67,6 @@ async function getPostRecord(url: URL) {
   return null;
 }
 
-function markLastUpdate(
-  db: DrizzleD1Database,
-  result: typeof bookmarks.$inferSelect,
-) {
-  return db
-    .insert(bookmarks)
-    .values({ ...result, uri: 'last_updated', control: ControlMode.Control })
-    .onConflictDoUpdate({
-      target: [bookmarks.uri, bookmarks.sub],
-      set: {
-        updatedAt: sql`(DATETIME('now', 'localtime'))`,
-      },
-    });
-}
-
 export const postBookmarkHandlers = factory.createHandlers(
   JwtAuthErrorJson,
   JwtAuth,
@@ -114,7 +99,7 @@ export const postBookmarkHandlers = factory.createHandlers(
       .returning();
 
     if (result) {
-      await markLastUpdate(db, result);
+      await db.insert(operations).values({ opcode: 'add', ...result });
       return c.json({ status: 'created', params: { url } }, 201);
     }
     return c.json({ error: 'already bookmarked', params: { url } }, 409);
@@ -155,7 +140,7 @@ export const deleteBookmarkHandlers = factory.createHandlers(
       .returning();
 
     if (result) {
-      await markLastUpdate(db, result);
+      await db.insert(operations).values({ opcode: 'delete', ...result });
       return c.json({ status: 'deleted', params: { url } }, 200);
     }
     return c.json({ error: 'bookmark not found', params: { url } }, 404);
