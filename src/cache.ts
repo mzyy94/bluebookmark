@@ -43,12 +43,12 @@ export async function getAllFeedFromCache(c: Context, iss: string) {
   const req = feedCacheKey(c, iss);
   const res = await cache.match(req);
   if (!res) {
-    return { allFeed: null, lastUpdate: null };
+    return { allFeed: null, opId: 0 };
   }
-  const lastMod = res.headers.get('Last-Modified');
+  const opId = parseInt(res.headers.get('X-OperationId') ?? '0', 10);
   return {
     allFeed: await res.json<AllFeed>(),
-    lastUpdate: lastMod && Date.parse(lastMod) / 1000,
+    opId,
   };
 }
 
@@ -56,9 +56,11 @@ export async function putAllFeedToCache(
   c: Context,
   iss: string,
   allFeed: AllFeed,
+  operationId: number,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss);
   const res = new Response(JSON.stringify(allFeed));
+  res.headers.set('X-OperationId', `${operationId}`);
   return cache.put(req, res);
 }

@@ -1,11 +1,11 @@
 import { zValidator } from '@hono/zod-validator';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
 import { z } from 'zod';
 import { getAllFeedFromCache, putAllFeedToCache } from '../cache';
-import { ControlMode, bookmarks } from '../schema';
+import { ControlMode, bookmarks, operations } from '../schema';
 import { XrpcAuth } from './auth';
 
 const factory = createFactory();
@@ -53,21 +53,18 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const { limit, cursor } = c.req.valid('query');
     const [, time, cid] = cursor ?? [];
 
-    const ctrlRow = await db
-      .select({
-        updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
-      })
-      .from(bookmarks)
-      .where(and(eq(bookmarks.sub, iss), eq(bookmarks.uri, 'last_updated')))
+    const lastOp = await db
+      .select({ id: operations.id })
+      .from(operations)
+      .where(eq(operations.sub, iss))
+      .orderBy(desc(operations.id))
+      .limit(1)
       .get();
+    const latestOpId = lastOp?.id ?? 0;
 
-    let { allFeed, lastUpdate } = await getAllFeedFromCache(c, iss);
-    if (
-      !allFeed ||
-      !lastUpdate ||
-      (ctrlRow && ctrlRow.updatedAt > (lastUpdate || 0))
-    ) {
-      // cache is not fresh
+    let { allFeed, opId: cachedOpId } = await getAllFeedFromCache(c, iss);
+    if (!allFeed) {
+      // fetch all bookmarks from db
       allFeed = await db
         .select({
           post: bookmarks.uri,
@@ -85,9 +82,39 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       if (allFeed.length === 0) {
         return c.json({ feed: [] });
       }
-      allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
-      await putAllFeedToCache(c, iss, allFeed);
+    } else if (cachedOpId !== latestOpId) {
+      // need to apply diff patch
+      const operationList = await db
+        .select()
+        .from(operations)
+        .where(and(eq(operations.sub, iss), gt(operations.id, cachedOpId)))
+        .orderBy(desc(operations.id));
+
+      const diffs = operationList
+        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+        .reduce(
+          (a, c) => {
+            if (c.opcode === 'delete' && a.find((b) => b.uri === c.uri)) {
+              return a.filter((b) => b.uri !== c.uri);
+            }
+            return a.concat([c]);
+          },
+          [] as typeof operationList,
+        );
+      const insert = diffs
+        .filter((a) => a.opcode === 'add')
+        .map((a) => ({
+          post: a.uri,
+          cid: a.cid,
+          updatedAt: Date.parse(a.createdAt) / 1000,
+        }));
+      const remove = diffs
+        .filter((a) => a.opcode === 'delete')
+        .map(({ uri }) => uri);
+      allFeed = insert.concat(allFeed).filter((a) => !remove.includes(a.post));
     }
+    allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
+    await putAllFeedToCache(c, iss, allFeed, latestOpId);
 
     const index = time
       ? allFeed.findIndex((a) => a.updatedAt <= +time && a.cid !== cid)
