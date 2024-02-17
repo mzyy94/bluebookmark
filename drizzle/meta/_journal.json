@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1707831734825,
-      "tag": "0000_productive_riptide",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1708146237903,
-      "tag": "0001_abnormal_dexter_bennett",
+      "when": 1708156292499,
+      "tag": "0000_crazy_black_panther",
       "breakpoints": true
     }
   ]

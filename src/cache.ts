@@ -1,6 +1,5 @@
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
-import { ControlMode } from './schema';
 
 const pubkeyCacheKey = (did: string) =>
   new Request(

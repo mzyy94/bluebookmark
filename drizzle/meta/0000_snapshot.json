@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "552e4591-11b3-4fad-8161-f6b67564610f",
+  "id": "dd0462a1-9e80-4f63-aa63-0fe9c2ec4012",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "bookmarks": {
@@ -78,6 +78,66 @@
           "name": "bookmarks_sub_uri_pk"
         }
       },
+      "uniqueConstraints": {}
+    },
+    "operations": {
+      "name": "operations",
+      "columns": {
+        "opid": {
+          "name": "opid",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sub": {
+          "name": "sub",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "opcode": {
+          "name": "opcode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "uri": {
+          "name": "uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cid": {
+          "name": "cid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(DATETIME('now', 'localtime'))"
+        }
+      },
+      "indexes": {
+        "sub_idx": {
+          "name": "sub_idx",
+          "columns": [
+            "sub"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     }
   },

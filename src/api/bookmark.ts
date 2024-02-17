@@ -8,7 +8,7 @@ import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import type { GetRecord } from '../at-proto';
 import { openPostRecordCache } from '../cache';
-import { ControlMode, bookmarks, operations } from '../schema';
+import { bookmarks, operations } from '../schema';
 
 const factory = createFactory();
 
@@ -90,9 +90,9 @@ export const postBookmarkHandlers = factory.createHandlers(
       .values({ uri, cid, repo, rkey, sub })
       .onConflictDoUpdate({
         target: [bookmarks.uri, bookmarks.sub],
-        where: eq(bookmarks.control, ControlMode.Deleted),
+        where: eq(bookmarks.isDeleted, true),
         set: {
-          control: ControlMode.Active,
+          isDeleted: false,
           updatedAt: sql`(DATETIME('now', 'localtime'))`,
         },
       })
@@ -127,14 +127,14 @@ export const deleteBookmarkHandlers = factory.createHandlers(
     const [result] = await db
       .update(bookmarks)
       .set({
-        control: ControlMode.Deleted,
+        isDeleted: true,
         updatedAt: sql`(DATETIME('now', 'localtime'))`,
       })
       .where(
         and(
           eq(bookmarks.uri, uri),
           eq(bookmarks.sub, sub),
-          eq(bookmarks.control, ControlMode.Active),
+          eq(bookmarks.isDeleted, false),
         ),
       )
       .returning();

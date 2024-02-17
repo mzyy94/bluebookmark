@@ -5,7 +5,7 @@ import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
 import { z } from 'zod';
 import { getAllFeedFromCache, putAllFeedToCache } from '../cache';
-import { ControlMode, bookmarks, operations } from '../schema';
+import { bookmarks, operations } from '../schema';
 import { XrpcAuth } from './auth';
 
 const factory = createFactory();
@@ -73,12 +73,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         })
         .from(bookmarks)
         .limit(1000)
-        .where(
-          and(
-            eq(bookmarks.sub, iss),
-            eq(bookmarks.control, ControlMode.Active),
-          ),
-        );
+        .where(and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, false)));
       if (allFeed.length === 0) {
         return c.json({ feed: [] });
       }
