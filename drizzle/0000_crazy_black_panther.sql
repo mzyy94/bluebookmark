@@ -19,4 +19,5 @@ CREATE TABLE `operations` (
 	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX `sub_index` ON `bookmarks` (`sub`);--> statement-breakpoint
 CREATE INDEX `sub_idx` ON `operations` (`sub`);

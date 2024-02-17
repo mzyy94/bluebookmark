@@ -23,7 +23,10 @@ export const bookmarks = sqliteTable(
       .default(sql`(DATETIME('now', 'localtime'))`),
     isDeleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
   },
-  (table) => ({ pk: primaryKey({ columns: [table.sub, table.uri] }) }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.sub, table.uri] }),
+    subIndex: index('sub_index').on(table.sub),
+  }),
 );
 
 export const operations = sqliteTable(
