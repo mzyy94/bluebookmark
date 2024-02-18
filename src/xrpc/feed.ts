@@ -68,9 +68,9 @@ const newestFirst = <T extends { updatedAt: number }>(a: T, b: T) =>
 function appendRange(
   range: { s: number; e: number }[],
   result: { rowid: number }[],
-  start: number,
+  start: number | undefined,
 ) {
-  if (!result.length) {
+  if (!result.length || !start) {
     return range;
   }
   const end = result[result.length - 1].rowid;
@@ -130,14 +130,18 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     }
 
     let { feedItems, opId, range } = await getFeedFromCache(c, iss, !cursor);
+    const updateFeedItems = (limit: number, rowid?: number, until?: number) =>
+      fetchFeedItems(limit, rowid, until).then((feeds) => {
+        range = appendRange(range, feeds, rowid);
+        return feeds.concat(feedItems ?? []).sort(newestFirst);
+      });
+
     if (!feedItems) {
       // cache not found. fetch bookmarks from database
-      feedItems = await fetchFeedItems(limit + 1, cursor?.rowid).execute();
-      range = appendRange(range, feedItems, cursor?.rowid ?? 0);
+      feedItems = await updateFeedItems(limit + 1, cursor?.rowid);
       if (feedItems.length === 0) {
         return c.json({ feed: [] });
       }
-      feedItems.sort(newestFirst);
       const lastOp = await db
         .select()
         .from(operations)
@@ -158,12 +162,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       if (!cursor) {
         if (feedItems.length < limit) {
           // fetch missing pieces from database
-          const feeds = await fetchFeedItems(
+          feedItems = await updateFeedItems(
             limit + 1 - feedItems.length,
             feedItems[feedItems.length - 1]?.rowid,
           );
-          // no need to append range for latest cache
-          feedItems = feeds.concat(feedItems).sort(newestFirst);
         }
       } else {
         let targetRange = range.find(
@@ -172,9 +174,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         if (!targetRange) {
           const rowid = cursor.rowid;
           const nextRange = range.find((r) => r.s < rowid);
-          const feeds = await fetchFeedItems(limit + 1, rowid, nextRange?.s);
-          range = appendRange(range, feeds, rowid);
-          feedItems = feeds.concat(feedItems).sort(newestFirst);
+          feedItems = await updateFeedItems(limit + 1, rowid, nextRange?.s);
           targetRange = range.find((r) => rowid <= r.s && rowid > r.e);
         }
         if (targetRange) {
@@ -184,15 +184,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           );
           if (found.length < limit) {
             const rowid = found[found.length - 1]?.rowid ?? cursor.rowid;
-            // fetch missing pieces from database
-            const feeds = await fetchFeedItems(limit + 1 - found.length, rowid);
-            range = appendRange(range, feeds, rowid);
-            feedItems = feeds.concat(feedItems).sort(newestFirst);
+            feedItems = await updateFeedItems(limit + 1 - found.length, rowid);
           }
         } else {
-          const feeds = await fetchFeedItems(limit + 1, cursor.rowid);
-          range = appendRange(range, feeds, cursor.rowid);
-          feedItems = feeds.concat(feedItems).sort(newestFirst);
+          feedItems = await updateFeedItems(limit + 1, cursor.rowid);
         }
       }
     }
