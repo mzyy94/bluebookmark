@@ -7,17 +7,9 @@ import { z } from 'zod';
 import { getFeedFromCache, putFeedToCache } from '../cache';
 import { bookmarks, operations } from '../schema';
 import { XrpcAuth } from './auth';
+import { createCursor, cursorPattern, parseCursor } from './cursor';
 
 const factory = createFactory();
-
-function createCursor<
-  T extends { cid: string; updatedAt: number; rowid: number } | undefined,
-  R = T extends NonNullable<T> ? string : undefined,
->(item: T): R {
-  return item
-    ? (`${item.updatedAt}::${item.cid}+${item.rowid}` as R)
-    : (undefined as R);
-}
 
 // ref. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json
 const validateQuery = zValidator(
@@ -29,11 +21,7 @@ const validateQuery = zValidator(
       .default('50')
       .transform((s) => parseFloat(s))
       .pipe(z.number().int().min(1).max(100)),
-    cursor: z
-      .string()
-      .regex(/(^$|^\d+::\w+)/)
-      .transform((s) => s.match(/^(\d+)::(\w+)/))
-      .optional(),
+    cursor: z.string().regex(cursorPattern).transform(parseCursor).optional(),
   }),
 );
 
@@ -86,7 +74,6 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const db = drizzle(DB);
 
     const { limit, cursor } = c.req.valid('query');
-    const [, time, cid] = cursor ?? [];
 
     const lastOp = await db
       .select()
@@ -131,8 +118,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     feedItems.sort((a, b) => b.updatedAt - a.updatedAt);
     await putFeedToCache(c, iss, feedItems, lastOp.id);
 
-    const index = time
-      ? feedItems.findIndex((a) => a.updatedAt <= +time && a.cid !== cid)
+    const index = cursor
+      ? feedItems.findIndex(
+          (a) => a.updatedAt <= cursor.time && a.cid !== cursor.cid,
+        )
       : 0;
     const result = feedItems.slice(index, index + limit);
     const feed = result.map(({ post }) => ({ post }));
