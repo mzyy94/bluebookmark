@@ -131,14 +131,14 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     let { feedItems, opId, range } = await getFeedFromCache(c, iss, !cursor);
     const updateFeedItems = (limit: number, rowid?: number, until?: number) =>
-      fetchFeedItems(limit, rowid, until).then((feeds) => {
+      fetchFeedItems(limit + 1, rowid, until).then((feeds) => {
         range = appendRange(range, feeds, rowid);
         return feeds.concat(feedItems ?? []).sort(newestFirst);
       });
 
     if (!feedItems) {
       // cache not found. fetch bookmarks from database
-      feedItems = await updateFeedItems(limit + 1, cursor?.rowid);
+      feedItems = await updateFeedItems(limit, cursor?.rowid);
       if (feedItems.length === 0) {
         return c.json({ feed: [] });
       }
@@ -163,7 +163,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         if (feedItems.length < limit) {
           // fetch missing pieces from database
           feedItems = await updateFeedItems(
-            limit + 1 - feedItems.length,
+            limit - feedItems.length,
             feedItems[feedItems.length - 1]?.rowid,
           );
         }
@@ -171,10 +171,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         let targetRange = range.find(
           (r) => cursor.rowid <= r.s && cursor.rowid > r.e,
         );
-        if (!targetRange) {
+        const nextRange = range.find((r) => r.s < cursor.rowid);
+        if (!targetRange && nextRange) {
           const rowid = cursor.rowid;
-          const nextRange = range.find((r) => r.s < rowid);
-          feedItems = await updateFeedItems(limit + 1, rowid, nextRange?.s);
+          feedItems = await updateFeedItems(limit, rowid, nextRange.s);
           targetRange = range.find((r) => rowid <= r.s && rowid > r.e);
         }
         if (targetRange) {
@@ -184,10 +184,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           );
           if (found.length < limit) {
             const rowid = found[found.length - 1]?.rowid ?? cursor.rowid;
-            feedItems = await updateFeedItems(limit + 1 - found.length, rowid);
+            feedItems = await updateFeedItems(limit - found.length, rowid);
           }
         } else {
-          feedItems = await updateFeedItems(limit + 1, cursor.rowid);
+          feedItems = await updateFeedItems(limit, cursor.rowid);
         }
       }
     }
