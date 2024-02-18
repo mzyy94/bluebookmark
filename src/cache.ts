@@ -26,12 +26,12 @@ export async function openPostRecordCache(url: URL) {
   return { req, cache };
 }
 
-const feedCacheKey = (c: Context, iss: string, latest?: boolean) => {
+const feedCacheKey = (c: Context, iss: string, latest: boolean) => {
   const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
   const url = new URL(
     `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal=3`,
   );
-  url.searchParams.append('latest', `${!!latest}`);
+  url.searchParams.append('latest', `${latest}`);
   url.searchParams.append('iss', iss);
   return new Request(url);
 };
@@ -46,7 +46,7 @@ type BookmarkFeed = {
 export async function getFeedFromCache(
   c: Context,
   iss: string,
-  isLatest?: boolean,
+  isLatest: boolean,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, isLatest);
@@ -66,7 +66,7 @@ export async function putFeedToCache(
   iss: string,
   feed: BookmarkFeed,
   operationId: number,
-  isLatest?: boolean,
+  isLatest: boolean,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, isLatest);

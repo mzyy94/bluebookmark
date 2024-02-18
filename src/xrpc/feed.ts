@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import { SQL, and, desc, eq, gt, sql } from 'drizzle-orm';
+import { SQL, and, between, desc, eq, gt, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
@@ -61,6 +61,9 @@ async function getOperationDiffs(
   return { insert, remove };
 }
 
+const newestFirst = <T extends { updatedAt: number }>(a: T, b: T) =>
+  b.updatedAt - a.updatedAt;
+
 export const getFeedSkeletonHandlers = factory.createHandlers(
   XrpcAuth({ allowGuest: true }),
   validateQuery,
@@ -101,22 +104,81 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         .limit(limit)
         .where(and(eq(bookmarks.sub, iss), filter));
 
-    let { feed: feedItems, opId: cachedOpId } = await getFeedFromCache(c, iss);
+    let { feed: feedItems, opId } = await getFeedFromCache(c, iss, !cursor);
     if (!feedItems) {
-      // fetch all bookmarks from db
-      feedItems = await fetchFeedItems(1000);
+      // cache not found. fetch bookmarks from database
+      const range = cursor && between(sql`rowid`, 0, cursor.rowid);
+      feedItems = await fetchFeedItems(limit + 1, range).execute();
       if (feedItems.length === 0) {
         return c.json({ feed: [] });
       }
-    } else if (cachedOpId !== lastOp.id) {
-      // need to apply diff patch
-      const { insert, remove } = await getOperationDiffs(db, iss, cachedOpId);
-      feedItems = insert
-        .concat(feedItems)
-        .filter((a) => !remove.includes(a.post));
+      feedItems.sort(newestFirst);
+    } else {
+      // Cache hit. check difference from cache
+      if (opId !== lastOp.id) {
+        // need to apply diff patch
+        const { insert, remove } = await getOperationDiffs(db, iss, opId);
+        feedItems = insert
+          .concat(feedItems)
+          .filter((a) => !remove.includes(a.post));
+      }
+
+      let headCid: string;
+      if (cursor) {
+        headCid = cursor.cid;
+      } else if (lastOp.opcode === 'add') {
+        headCid = lastOp.cid;
+      } else {
+        // get latest add operation
+        const lastAdded = await db
+          .select()
+          .from(operations)
+          .where(
+            and(
+              eq(operations.sub, iss),
+              eq(operations.opcode, 'add'),
+              ne(operations.cid, lastOp.cid),
+            ),
+          )
+          .orderBy(desc(operations.id))
+          .limit(1)
+          .get();
+        if (!lastAdded) {
+          return c.json({ feed: [] });
+        }
+        headCid = lastAdded.cid;
+      }
+
+      feedItems.sort(newestFirst);
+      const headIndex = feedItems.findIndex((item) => item.cid === headCid);
+      if (headIndex !== -1) {
+        // if head item exists in cache, check all feed items are in cache
+        const items = feedItems.slice(headIndex + 1, headIndex + 1 + limit);
+        if (items.length !== limit) {
+          // if number of found feed items in cache is not enough, fetch missing pieces from database
+          const lastItem = items[items.length - 1];
+          const range = lastItem && between(sql`rowid`, 0, lastItem.rowid);
+          const feeds = await fetchFeedItems(limit + 1 - items.length, range);
+          feedItems = feeds.concat(feedItems);
+        }
+      } else {
+        // head item is not in cache. fetch from database
+        const range = cursor && between(sql`rowid`, 0, cursor.rowid);
+        const feeds = await fetchFeedItems(limit + 1, range);
+        feedItems = feeds.concat(feedItems);
+      }
     }
-    feedItems.sort((a, b) => b.updatedAt - a.updatedAt);
-    await putFeedToCache(c, iss, feedItems, lastOp.id);
+
+    // remove duplicates
+    feedItems = feedItems
+      .sort(newestFirst)
+      .reduce(
+        (array, c) =>
+          array.find((a) => a.cid === c.cid) ? array : array.concat([c]),
+        [] as typeof feedItems,
+      );
+
+    await putFeedToCache(c, iss, feedItems, lastOp.id, !cursor);
 
     const index = cursor
       ? feedItems.findIndex(
