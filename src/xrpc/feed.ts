@@ -163,7 +163,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
             feedItems[feedItems.length - 1]?.rowid,
           );
           // no need to append range for latest cache
-          feedItems = feeds.concat(feedItems);
+          feedItems = feeds.concat(feedItems).sort(newestFirst);
         }
       } else {
         let targetRange = range.find(
@@ -187,24 +187,22 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
             // fetch missing pieces from database
             const feeds = await fetchFeedItems(limit + 1 - found.length, rowid);
             range = appendRange(range, feeds, rowid);
-            feedItems = feeds.concat(feedItems);
+            feedItems = feeds.concat(feedItems).sort(newestFirst);
           }
         } else {
           const feeds = await fetchFeedItems(limit + 1, cursor.rowid);
           range = appendRange(range, feeds, cursor.rowid);
-          feedItems = feeds.concat(feedItems);
+          feedItems = feeds.concat(feedItems).sort(newestFirst);
         }
       }
     }
 
     // remove duplicates
-    feedItems = feedItems
-      .sort(newestFirst)
-      .reduce(
-        (array, c) =>
-          array.find((a) => a.cid === c.cid) ? array : array.concat([c]),
-        [] as typeof feedItems,
-      );
+    feedItems = feedItems.reduce(
+      (array, c) =>
+        array.find((a) => a.cid === c.cid) ? array : array.concat([c]),
+      [] as typeof feedItems,
+    );
 
     const index = cursor
       ? feedItems.findIndex(
