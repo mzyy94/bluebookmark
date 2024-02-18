@@ -80,10 +80,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const iss: string | undefined = c.get('iss');
     if (!iss) {
       const { WELCOME_POST } = env<{ WELCOME_POST: string | undefined }>(c);
-      if (WELCOME_POST) {
-        return c.json({ feed: [{ post: WELCOME_POST }] });
-      }
-      return c.json({ feed: [] });
+      return c.json({ feed: WELCOME_POST ? [{ post: WELCOME_POST }] : [] });
     }
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
@@ -92,13 +89,17 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const [, time, cid] = cursor ?? [];
 
     const lastOp = await db
-      .select({ id: operations.id })
+      .select()
       .from(operations)
       .where(eq(operations.sub, iss))
       .orderBy(desc(operations.id))
       .limit(1)
       .get();
-    const latestOpId = lastOp?.id ?? 0;
+
+    if (!lastOp) {
+      // bookmark is empty
+      return c.json({ feed: [] });
+    }
 
     const fetchFeedItems = (limit: number, filter?: SQL) =>
       db
@@ -120,7 +121,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       if (feedItems.length === 0) {
         return c.json({ feed: [] });
       }
-    } else if (cachedOpId !== latestOpId) {
+    } else if (cachedOpId !== lastOp.id) {
       // need to apply diff patch
       const { insert, remove } = await getOperationDiffs(db, iss, cachedOpId);
       feedItems = insert
@@ -128,7 +129,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         .filter((a) => !remove.includes(a.post));
     }
     feedItems.sort((a, b) => b.updatedAt - a.updatedAt);
-    await putFeedToCache(c, iss, feedItems, latestOpId);
+    await putFeedToCache(c, iss, feedItems, lastOp.id);
 
     const index = time
       ? feedItems.findIndex((a) => a.updatedAt <= +time && a.cid !== cid)
