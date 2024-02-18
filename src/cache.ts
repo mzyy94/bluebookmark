@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
+import { Cursor } from './xrpc/cursor';
 
 const pubkeyCacheKey = (did: string) =>
   new Request(
@@ -29,7 +30,7 @@ export async function openPostRecordCache(url: URL) {
 const feedCacheKey = (c: Context, iss: string, latest: boolean) => {
   const { FEED_HOST } = env<{ FEED_HOST: string }>(c);
   const url = new URL(
-    `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal=3`,
+    `https://${FEED_HOST}/xrpc/app.bsky.feed.getFeedSkeleton?internal=4`,
   );
   url.searchParams.append('latest', `${latest}`);
   url.searchParams.append('iss', iss);
@@ -43,6 +44,13 @@ type BookmarkFeed = {
   rowid: number;
 }[];
 
+type Range = {
+  /** start rowId */
+  s: number;
+  /** end rowId */
+  e: number;
+};
+
 export async function getFeedFromCache(
   c: Context,
   iss: string,
@@ -52,12 +60,14 @@ export async function getFeedFromCache(
   const req = feedCacheKey(c, iss, isLatest);
   const res = await cache.match(req);
   if (!res) {
-    return { feed: null, opId: 0 };
+    return { feedItems: null, opId: 0, range: [] as Range[] };
   }
   const opId = parseInt(res.headers.get('X-OperationId') ?? '0', 10);
+  const range: Range[] = JSON.parse(res.headers.get('X-Range') ?? '[]');
   return {
-    feed: await res.json<BookmarkFeed>(),
+    feedItems: await res.json<BookmarkFeed>(),
     opId,
+    range,
   };
 }
 
@@ -66,11 +76,13 @@ export async function putFeedToCache(
   iss: string,
   feed: BookmarkFeed,
   operationId: number,
+  range: Range[],
   isLatest: boolean,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, isLatest);
   const res = new Response(JSON.stringify(feed));
   res.headers.set('X-OperationId', `${operationId}`);
+  res.headers.set('X-Range', JSON.stringify(range));
   return cache.put(req, res);
 }

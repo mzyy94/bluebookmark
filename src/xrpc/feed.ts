@@ -102,7 +102,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       return c.json({ feed, cursor: createCursor(items[0]) });
     }
 
-    let { feed: feedItems, opId } = await getFeedFromCache(c, iss, !cursor);
+    let { feedItems, opId, range } = await getFeedFromCache(c, iss, !cursor);
     if (!feedItems) {
       // cache not found. fetch bookmarks from database
       feedItems = await fetchFeedItems(limit + 1, cursor?.rowid).execute();
@@ -110,40 +110,52 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         return c.json({ feed: [] });
       }
       feedItems.sort(newestFirst);
+      const lastOp = await db
+        .select()
+        .from(operations)
+        .where(eq(operations.sub, iss))
+        .limit(1)
+        .orderBy(desc(operations.id))
+        .get();
+      opId = lastOp?.id ?? opId;
     } else {
       // Cache hit. check difference from cache
       const { insert, remove, id } = await getOperationDiffs(db, iss, opId);
       feedItems = insert
         .concat(feedItems)
-        .filter((a) => !remove.includes(a.post));
+        .filter((a) => !remove.includes(a.post))
+        .sort(newestFirst);
       opId = id ?? opId;
 
-      let headCid: string;
-      if (cursor) {
-        headCid = cursor.cid;
-      } else {
-        const lastAdded = await fetchFeedItems(1).get();
-        if (!lastAdded) {
-          return c.json({ feed: [] });
-        }
-        headCid = lastAdded.cid;
-      }
-
-      feedItems.sort(newestFirst);
-      const headIndex = feedItems.findIndex((item) => item.cid === headCid);
-      if (headIndex !== -1) {
-        // if head item exists in cache, check all feed items are in cache
-        const items = feedItems.slice(headIndex + 1, headIndex + 1 + limit);
-        if (items.length !== limit) {
-          // if number of found feed items in cache is not enough, fetch missing pieces from database
-          const rowid = items[items.length - 1]?.rowid;
-          const feeds = await fetchFeedItems(limit + 1 - items.length, rowid);
+      if (!cursor) {
+        if (feedItems.length < limit) {
+          // fetch missing pieces from database
+          const feeds = await fetchFeedItems(
+            limit + 1 - feedItems.length,
+            feedItems[feedItems.length - 1]?.rowid,
+          );
           feedItems = feeds.concat(feedItems);
         }
       } else {
-        // head item is not in cache. fetch from database
-        const feeds = await fetchFeedItems(limit + 1, cursor?.rowid);
-        feedItems = feeds.concat(feedItems);
+        const targetRange = range.find(
+          (r) => cursor.rowid <= r.s && cursor.rowid > r.e,
+        );
+        if (targetRange) {
+          const foundItems = feedItems.filter(
+            ({ rowid }) => rowid <= cursor.rowid && rowid >= targetRange.e,
+          );
+          if (foundItems.length < limit) {
+            // fetch missing pieces from database
+            const feeds = await fetchFeedItems(
+              limit + 1 - foundItems.length,
+              foundItems[foundItems.length - 1]?.rowid,
+            );
+            feedItems = feeds.concat(feedItems);
+          }
+        } else {
+          const feeds = await fetchFeedItems(limit + 1, cursor?.rowid);
+          feedItems = feeds.concat(feedItems);
+        }
       }
     }
 
@@ -156,8 +168,6 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         [] as typeof feedItems,
       );
 
-    await putFeedToCache(c, iss, feedItems, opId, !cursor);
-
     const index = cursor
       ? feedItems.findIndex(
           (a) => a.updatedAt <= cursor.time && a.cid !== cursor.cid,
@@ -167,6 +177,28 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
+    if (cursor && result.length) {
+      const start = result[0].rowid;
+      const end = result[result.length - 1].rowid;
+      range.push({ s: start, e: end });
+      range = range
+        .sort((a, b) => b.s - a.s)
+        .reduce(
+          (r, { s, e }) => {
+            if (r.length) {
+              const last = r[r.length - 1];
+              if (last.e <= s) {
+                last.e = e;
+                return r;
+              }
+            }
+            return r.concat([{ s, e }]);
+          },
+          [] as typeof range,
+        );
+    }
+    await putFeedToCache(c, iss, feedItems, opId, range, !cursor);
+
     return c.json({ cursor: lastCur, feed });
   },
 );
