@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import { SQL, and, between, desc, eq, gt, ne, sql } from 'drizzle-orm';
+import { and, between, desc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
@@ -103,7 +103,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     }
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
-    const fetchFeedItems = (limit: number, rowId?: number) =>
+    const fetchFeedItems = (limit: number, rowId?: number, until = 0) =>
       db
         .select({
           rowid: sql<number>`rowid`,
@@ -117,7 +117,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         .where(
           and(
             eq(bookmarks.sub, iss),
-            rowId ? between(sql`rowid`, 0, rowId - 1) : undefined,
+            rowId ? between(sql`rowid`, until, rowId - 1) : undefined,
           ),
         );
 
@@ -166,12 +166,21 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           feedItems = feeds.concat(feedItems);
         }
       } else {
-        const targetRange = range.find(
+        let targetRange = range.find(
           (r) => cursor.rowid <= r.s && cursor.rowid > r.e,
         );
+        if (!targetRange) {
+          const rowid = cursor.rowid;
+          const nextRange = range.find((r) => r.s < rowid);
+          const feeds = await fetchFeedItems(limit + 1, rowid, nextRange?.s);
+          range = appendRange(range, feeds, rowid);
+          feedItems = feeds.concat(feedItems).sort(newestFirst);
+          targetRange = range.find((r) => rowid <= r.s && rowid > r.e);
+        }
         if (targetRange) {
+          const end = targetRange.e;
           const found = feedItems.filter(
-            ({ rowid }) => rowid < cursor.rowid && rowid >= targetRange.e,
+            ({ rowid }) => rowid < cursor.rowid && rowid >= end,
           );
           if (found.length < limit) {
             const rowid = found[found.length - 1]?.rowid ?? cursor.rowid;
