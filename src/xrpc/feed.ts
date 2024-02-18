@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
 import { z } from 'zod';
-import { getAllFeedFromCache, putAllFeedToCache } from '../cache';
+import { getFeedFromCache, putFeedToCache } from '../cache';
 import { bookmarks, operations } from '../schema';
 import { XrpcAuth } from './auth';
 
@@ -62,11 +62,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       .get();
     const latestOpId = lastOp?.id ?? 0;
 
-    let { allFeed, opId: cachedOpId } = await getAllFeedFromCache(c, iss);
-    if (!allFeed) {
+    let { feed: feedItems, opId: cachedOpId } = await getFeedFromCache(c, iss);
+    if (!feedItems) {
       // fetch all bookmarks from db
-
-      allFeed = await db
+      feedItems = await db
         .select({
           post: bookmarks.uri,
           cid: bookmarks.cid,
@@ -75,7 +74,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         .from(bookmarks)
         .limit(1000)
         .where(eq(bookmarks.sub, iss));
-      if (allFeed.length === 0) {
+      if (feedItems.length === 0) {
         return c.json({ feed: [] });
       }
     } else if (cachedOpId !== latestOpId) {
@@ -107,15 +106,17 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       const remove = diffs
         .filter((a) => a.opcode === 'delete')
         .map(({ uri }) => uri);
-      allFeed = insert.concat(allFeed).filter((a) => !remove.includes(a.post));
+      feedItems = insert
+        .concat(feedItems)
+        .filter((a) => !remove.includes(a.post));
     }
-    allFeed.sort((a, b) => b.updatedAt - a.updatedAt);
-    await putAllFeedToCache(c, iss, allFeed, latestOpId);
+    feedItems.sort((a, b) => b.updatedAt - a.updatedAt);
+    await putFeedToCache(c, iss, feedItems, latestOpId);
 
     const index = time
-      ? allFeed.findIndex((a) => a.updatedAt <= +time && a.cid !== cid)
+      ? feedItems.findIndex((a) => a.updatedAt <= +time && a.cid !== cid)
       : 0;
-    const result = allFeed.slice(index, index + limit);
+    const result = feedItems.slice(index, index + limit);
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);

@@ -35,31 +35,31 @@ const feedCacheKey = (c: Context, iss: string) => {
   return new Request(url);
 };
 
-type AllFeed = { post: string; cid: string; updatedAt: number }[];
+type BookmarkFeed = { post: string; cid: string; updatedAt: number }[];
 
-export async function getAllFeedFromCache(c: Context, iss: string) {
+export async function getFeedFromCache(c: Context, iss: string) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss);
   const res = await cache.match(req);
   if (!res) {
-    return { allFeed: null, opId: 0 };
+    return { feed: null, opId: 0 };
   }
   const opId = parseInt(res.headers.get('X-OperationId') ?? '0', 10);
   return {
-    allFeed: await res.json<AllFeed>(),
+    feed: await res.json<BookmarkFeed>(),
     opId,
   };
 }
 
-export async function putAllFeedToCache(
+export async function putFeedToCache(
   c: Context,
   iss: string,
-  allFeed: AllFeed,
+  feed: BookmarkFeed,
   operationId: number,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss);
-  const res = new Response(JSON.stringify(allFeed));
+  const res = new Response(JSON.stringify(feed));
   res.headers.set('X-OperationId', `${operationId}`);
   return cache.put(req, res);
 }
