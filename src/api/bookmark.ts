@@ -89,7 +89,12 @@ export const postBookmarkHandlers = factory.createHandlers(
       .insert(bookmarks)
       .values({ uri, cid, repo, rkey, sub })
       .onConflictDoNothing()
-      .returning();
+      .returning({
+        bookmarkId: sql<number>`rowid`,
+        sub: bookmarks.sub,
+        uri: bookmarks.uri,
+        cid: bookmarks.cid,
+      });
 
     if (result) {
       await db.insert(operations).values({ opcode: 'add', ...result });
@@ -120,7 +125,12 @@ export const deleteBookmarkHandlers = factory.createHandlers(
     const [result] = await db
       .delete(bookmarks)
       .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)))
-      .returning();
+      .returning({
+        bookmarkId: sql<number>`rowid`,
+        sub: bookmarks.sub,
+        uri: bookmarks.uri,
+        cid: bookmarks.cid,
+      });
 
     if (result) {
       await db.insert(operations).values({ opcode: 'delete', ...result });

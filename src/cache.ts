@@ -35,7 +35,12 @@ const feedCacheKey = (c: Context, iss: string) => {
   return new Request(url);
 };
 
-type BookmarkFeed = { post: string; cid: string; updatedAt: number }[];
+type BookmarkFeed = {
+  post: string;
+  cid: string;
+  updatedAt: number;
+  rowid: number;
+}[];
 
 export async function getFeedFromCache(c: Context, iss: string) {
   const cache = await caches.open('feed-cache');

@@ -11,10 +11,12 @@ import { XrpcAuth } from './auth';
 const factory = createFactory();
 
 function createCursor<
-  T extends { cid: string; updatedAt: number } | undefined,
+  T extends { cid: string; updatedAt: number; rowid: number } | undefined,
   R = T extends NonNullable<T> ? string : undefined,
 >(item: T): R {
-  return item ? (`${item.updatedAt}::${item.cid}` as R) : (undefined as R);
+  return item
+    ? (`${item.updatedAt}::${item.cid}+${item.rowid}` as R)
+    : (undefined as R);
 }
 
 // ref. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json
@@ -29,8 +31,8 @@ const validateQuery = zValidator(
       .pipe(z.number().int().min(1).max(100)),
     cursor: z
       .string()
-      .regex(/(^$|^\d+::\w+$)/)
-      .transform((s) => s.match(/^(\d+)::(\w+)$/))
+      .regex(/(^$|^\d+::\w+)/)
+      .transform((s) => s.match(/^(\d+)::(\w+)/))
       .optional(),
   }),
 );
@@ -67,6 +69,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       // fetch all bookmarks from db
       feedItems = await db
         .select({
+          rowid: sql<number>`rowid`,
           post: bookmarks.uri,
           cid: bookmarks.cid,
           updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
@@ -99,6 +102,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       const insert = diffs
         .filter((a) => a.opcode === 'add')
         .map((a) => ({
+          rowid: a.bookmarkId,
           post: a.uri,
           cid: a.cid,
           updatedAt: Date.parse(a.createdAt) / 1000,
