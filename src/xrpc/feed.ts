@@ -37,6 +37,42 @@ const validateQuery = zValidator(
   }),
 );
 
+async function getOperationDiffs(
+  db: ReturnType<typeof drizzle>,
+  iss: string,
+  operationId: number,
+) {
+  const operationList = await db
+    .select()
+    .from(operations)
+    .where(and(eq(operations.sub, iss), gt(operations.id, operationId)))
+    .orderBy(desc(operations.id));
+
+  const diffs = operationList
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+    .reduce(
+      (a, c) => {
+        if (c.opcode === 'delete' && a.find((b) => b.uri === c.uri)) {
+          return a.filter((b) => b.uri !== c.uri);
+        }
+        return a.concat([c]);
+      },
+      [] as typeof operationList,
+    );
+  const insert = diffs
+    .filter((a) => a.opcode === 'add')
+    .map((a) => ({
+      rowid: a.bookmarkId,
+      post: a.uri,
+      cid: a.cid,
+      updatedAt: Date.parse(a.createdAt) / 1000,
+    }));
+  const remove = diffs
+    .filter((a) => a.opcode === 'delete')
+    .map(({ uri }) => uri);
+  return { insert, remove };
+}
+
 export const getFeedSkeletonHandlers = factory.createHandlers(
   XrpcAuth({ allowGuest: true }),
   validateQuery,
@@ -82,34 +118,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       }
     } else if (cachedOpId !== latestOpId) {
       // need to apply diff patch
-      const operationList = await db
-        .select()
-        .from(operations)
-        .where(and(eq(operations.sub, iss), gt(operations.id, cachedOpId)))
-        .orderBy(desc(operations.id));
-
-      const diffs = operationList
-        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
-        .reduce(
-          (a, c) => {
-            if (c.opcode === 'delete' && a.find((b) => b.uri === c.uri)) {
-              return a.filter((b) => b.uri !== c.uri);
-            }
-            return a.concat([c]);
-          },
-          [] as typeof operationList,
-        );
-      const insert = diffs
-        .filter((a) => a.opcode === 'add')
-        .map((a) => ({
-          rowid: a.bookmarkId,
-          post: a.uri,
-          cid: a.cid,
-          updatedAt: Date.parse(a.createdAt) / 1000,
-        }));
-      const remove = diffs
-        .filter((a) => a.opcode === 'delete')
-        .map(({ uri }) => uri);
+      const { insert, remove } = await getOperationDiffs(db, iss, cachedOpId);
       feedItems = insert
         .concat(feedItems)
         .filter((a) => !remove.includes(a.post));
