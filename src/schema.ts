@@ -40,6 +40,7 @@ export const operations = sqliteTable(
     opcode: text('opcode').notNull().$type<'add' | 'delete'>(),
     uri: text('uri').notNull(),
     cid: text('cid').notNull(),
+    bookmarkId: integer('bm_rowid').notNull().default(0),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(DATETIME('now', 'localtime'))`),

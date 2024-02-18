@@ -16,6 +16,7 @@ CREATE TABLE `operations` (
 	`opcode` text NOT NULL,
 	`uri` text NOT NULL,
 	`cid` text NOT NULL,
+	`bm_rowid` integer NOT NULL,
 	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL
 );
 --> statement-breakpoint
