@@ -227,7 +227,7 @@ sequenceDiagram
         Bluesky->>Cloudflare: respond Post uri
     end
     Cloudflare->>Cloudflare: search bookmark based on Post uri
-    Cloudflare->>Cloudflare: set isDeleted = true
+    Cloudflare->>Cloudflare: delete bookmark
     Cloudflare->>User: respond OK
 ```
 

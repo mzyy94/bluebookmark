@@ -21,6 +21,9 @@ export const bookmarks = sqliteTable(
     updatedAt: text('updated_at')
       .notNull()
       .default(sql`(DATETIME('now', 'localtime'))`),
+    /**
+     * @deprecated deleted flag is no longer used
+     */
     isDeleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
   },
   (table) => ({

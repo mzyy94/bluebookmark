@@ -65,6 +65,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     let { allFeed, opId: cachedOpId } = await getAllFeedFromCache(c, iss);
     if (!allFeed) {
       // fetch all bookmarks from db
+
       allFeed = await db
         .select({
           post: bookmarks.uri,
@@ -73,7 +74,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         })
         .from(bookmarks)
         .limit(1000)
-        .where(and(eq(bookmarks.sub, iss), eq(bookmarks.isDeleted, false)));
+        .where(eq(bookmarks.sub, iss));
       if (allFeed.length === 0) {
         return c.json({ feed: [] });
       }

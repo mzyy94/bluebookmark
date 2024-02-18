@@ -88,14 +88,7 @@ export const postBookmarkHandlers = factory.createHandlers(
     const [result] = await db
       .insert(bookmarks)
       .values({ uri, cid, repo, rkey, sub })
-      .onConflictDoUpdate({
-        target: [bookmarks.uri, bookmarks.sub],
-        where: eq(bookmarks.isDeleted, true),
-        set: {
-          isDeleted: false,
-          updatedAt: sql`(DATETIME('now', 'localtime'))`,
-        },
-      })
+      .onConflictDoNothing()
       .returning();
 
     if (result) {
@@ -125,18 +118,8 @@ export const deleteBookmarkHandlers = factory.createHandlers(
     const { uri } = record;
 
     const [result] = await db
-      .update(bookmarks)
-      .set({
-        isDeleted: true,
-        updatedAt: sql`(DATETIME('now', 'localtime'))`,
-      })
-      .where(
-        and(
-          eq(bookmarks.uri, uri),
-          eq(bookmarks.sub, sub),
-          eq(bookmarks.isDeleted, false),
-        ),
-      )
+      .delete(bookmarks)
+      .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)))
       .returning();
 
     if (result) {
