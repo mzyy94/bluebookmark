@@ -1,5 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
-import { and, desc, eq, gt, sql } from 'drizzle-orm';
+import { SQL, and, desc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
@@ -100,10 +100,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       .get();
     const latestOpId = lastOp?.id ?? 0;
 
-    let { feed: feedItems, opId: cachedOpId } = await getFeedFromCache(c, iss);
-    if (!feedItems) {
-      // fetch all bookmarks from db
-      feedItems = await db
+    const fetchFeedItems = (limit: number, filter?: SQL) =>
+      db
         .select({
           rowid: sql<number>`rowid`,
           post: bookmarks.uri,
@@ -111,8 +109,14 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
         })
         .from(bookmarks)
-        .limit(1000)
-        .where(eq(bookmarks.sub, iss));
+        .orderBy(desc(sql`rowid`))
+        .limit(limit)
+        .where(and(eq(bookmarks.sub, iss), filter));
+
+    let { feed: feedItems, opId: cachedOpId } = await getFeedFromCache(c, iss);
+    if (!feedItems) {
+      // fetch all bookmarks from db
+      feedItems = await fetchFeedItems(1000);
       if (feedItems.length === 0) {
         return c.json({ feed: [] });
       }
