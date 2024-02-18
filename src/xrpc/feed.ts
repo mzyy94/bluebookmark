@@ -70,10 +70,10 @@ function appendRange(
   result: { rowid: number }[],
   start: number | undefined,
 ) {
-  if (!result.length || !start) {
+  if (!start) {
     return range;
   }
-  const end = result[result.length - 1].rowid;
+  const end = result[result.length - 1]?.rowid ?? start;
   range.push({ s: start, e: end });
   return range
     .sort((a, b) => b.s - a.s)
@@ -81,7 +81,7 @@ function appendRange(
       (r, { s, e }) => {
         if (r.length) {
           const last = r[r.length - 1];
-          if (last.e <= s) {
+          if (s !== e && last.e <= s) {
             last.e = e;
             return r;
           }
@@ -167,6 +167,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
             feedItems[feedItems.length - 1]?.rowid,
           );
         }
+      } else if (range.find((r) => r.s === r.e && r.e === cursor.rowid)) {
+        // end of feed. nothing to do
       } else {
         let targetRange = range.find(
           (r) => cursor.rowid <= r.s && cursor.rowid > r.e,
