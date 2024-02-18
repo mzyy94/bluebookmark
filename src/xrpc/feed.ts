@@ -202,7 +202,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           (a) => a.updatedAt <= cursor.time && a.cid !== cursor.cid,
         )
       : 0;
-    const result = feedItems.slice(index, index + limit);
+    const result = index >= 0 ? feedItems.slice(index, index + limit) : [];
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
