@@ -40,3 +40,12 @@ export const operations = sqliteTable(
   },
   (table) => ({ subIdx: index('sub_idx').on(table.sub) }),
 );
+
+export const users = sqliteTable('users', {
+  sub: text('sub').primaryKey(),
+  handle: text('handle').notNull(),
+  bookmarkCount: integer('bm_num').notNull().default(0),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(DATETIME('now', 'localtime'))`),
+});

@@ -15,6 +15,13 @@
       "when": 1708673375941,
       "tag": "0001_strange_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1708692120786,
+      "tag": "0002_square_wither",
+      "breakpoints": true
     }
   ]
 }
