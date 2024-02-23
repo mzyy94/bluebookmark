@@ -65,36 +65,6 @@ async function getOperationDiffs(
 const newestFirst = <T extends { createdAt: number }>(a: T, b: T) =>
   b.createdAt - a.createdAt;
 
-function appendRange(
-  range: { s: number; e: number }[],
-  result: { rowid: number }[],
-  start: number | undefined,
-) {
-  if (!start) {
-    return range;
-  }
-  const end = result[result.length - 1]?.rowid ?? start;
-  range.push({ s: start, e: end });
-  return range
-    .sort((a, b) => b.s - a.s)
-    .reduce(
-      (r, { s, e }) => {
-        if (r.length) {
-          const last = r[r.length - 1];
-          if (s !== e && last.e <= s) {
-            last.e = e;
-            return r;
-          }
-          if (last.s === s && last.e === e) {
-            return r;
-          }
-        }
-        return r.concat([{ s, e }]);
-      },
-      [] as typeof range,
-    );
-}
-
 export const getFeedSkeletonHandlers = factory.createHandlers(
   XrpcAuth({ allowGuest: true }),
   validateQuery,
@@ -135,7 +105,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     let { feedItems, opId, range } = await getFeedFromCache(c, user, !cursor);
     const updateFeedItems = (limit: number, rowid?: number, until?: number) =>
       fetchFeedItems(limit + 1, rowid, until).then((feeds) => {
-        range = appendRange(range, feeds, rowid);
+        range.append(feeds, rowid);
         return feeds.concat(feedItems ?? []).sort(newestFirst);
       });
 
@@ -164,10 +134,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
       if (!cursor) {
         if (feedItems.length < limit) {
-          const rowid = feedItems[feedItems.length - 1]?.rowid;
-          if (rowid && range.find((r) => r.s === r.e && r.e === rowid)) {
-            // EOF
-          } else {
+          if (!range.isEOF(feedItems[feedItems.length - 1])) {
             // fetch missing pieces from database
             feedItems = await updateFeedItems(
               limit - feedItems.length,
@@ -175,17 +142,14 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
             );
           }
         }
-      } else if (range.find((r) => r.s === r.e && r.e === cursor.rowid)) {
+      } else if (range.isEOF(cursor)) {
         // end of feed. nothing to do
       } else {
-        let targetRange = range.find(
-          (r) => cursor.rowid <= r.s && cursor.rowid > r.e,
-        );
-        const nextRange = range.find((r) => r.s < cursor.rowid);
+        let targetRange = range.get(cursor);
+        const nextRange = range.next(cursor);
         if (!targetRange && nextRange) {
-          const rowid = cursor.rowid;
-          feedItems = await updateFeedItems(limit, rowid, nextRange.s);
-          targetRange = range.find((r) => rowid <= r.s && rowid > r.e);
+          feedItems = await updateFeedItems(limit, cursor.rowid, nextRange.s);
+          targetRange = range.get(cursor);
         }
         if (targetRange) {
           const end = targetRange.e;
@@ -193,8 +157,10 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
             ({ rowid }) => rowid < cursor.rowid && rowid >= end,
           );
           if (found.length < limit) {
-            const rowid = found[found.length - 1]?.rowid ?? cursor.rowid;
-            feedItems = await updateFeedItems(limit - found.length, rowid);
+            if (!range.isEOF(found[found.length - 1])) {
+              const rowid = found[found.length - 1]?.rowid ?? cursor.rowid;
+              feedItems = await updateFeedItems(limit - found.length, rowid);
+            }
           }
         } else {
           feedItems = await updateFeedItems(limit, cursor.rowid);

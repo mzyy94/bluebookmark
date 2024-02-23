@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import { env } from 'hono/adapter';
-import { Cursor } from './xrpc/cursor';
+import { Range } from './xrpc/range';
 
 const pubkeyCacheKey = (did: string) =>
   new Request(
@@ -44,13 +44,6 @@ type BookmarkFeed = {
   rowid: number;
 }[];
 
-type Range = {
-  /** start rowId */
-  s: number;
-  /** end rowId */
-  e: number;
-};
-
 export async function getFeedFromCache(
   c: Context,
   iss: string,
@@ -60,10 +53,10 @@ export async function getFeedFromCache(
   const req = feedCacheKey(c, iss, isLatest);
   const res = await cache.match(req);
   if (!res) {
-    return { feedItems: null, opId: 0, range: [] as Range[] };
+    return { feedItems: null, opId: 0, range: new Range([]) };
   }
   const opId = parseInt(res.headers.get('X-OperationId') ?? '0', 10);
-  const range: Range[] = JSON.parse(res.headers.get('X-Range') ?? '[]');
+  const range = new Range(JSON.parse(res.headers.get('X-Range') ?? '[]'));
   return {
     feedItems: await res.json<BookmarkFeed>(),
     opId,
@@ -76,13 +69,13 @@ export async function putFeedToCache(
   iss: string,
   feed: BookmarkFeed,
   operationId: number,
-  range: Range[],
+  range: Range,
   isLatest: boolean,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, isLatest);
   const res = new Response(JSON.stringify(feed));
   res.headers.set('X-OperationId', `${operationId}`);
-  res.headers.set('X-Range', JSON.stringify(range));
+  res.headers.set('X-Range', range.toString());
   return cache.put(req, res);
 }
