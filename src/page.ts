@@ -8,53 +8,56 @@ export const signUpPage = html`<!doctype html>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,700">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.10/htmx.min.js" integrity="sha512-9qpauSP4+dDIldsrdNEZ2Z7JoyLZGfJsAP2wfXnc3drOh+5NXOBxjlq3sGXKdulmN9W+iwLxRt42zKMa8AHEeg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script>
-  async function register() {
-    const form = document.querySelector('form');
-    const formData = new FormData(form);
-    const request = new Request(form.action, {
-      method: form.method,
-      body: formData,
-    });
-    const res = await fetch(request)
-    if (res.ok) {
-      const { token } = await res.json();
-      document.querySelector('#token').value = token;
-      document.querySelector('#token').setAttribute('value', token);
-      if (document.querySelector('#copyToken').checked) {
-        setTimeout(async () =>
-          await navigator.clipboard.writeText(token).then(
-            () => alert('Token copied!'),
-            () => alert('Token copy failed'),
-          )
+    function copyToClipboard(noticeFailed) {
+      const token = document.querySelector('#token').value;
+      setTimeout(async () =>
+        await navigator.clipboard.writeText(token).then(
+          () => alert('Token copied!'),
+          () => noticeFailed && alert('Token copy failed'),
+        )
         , 0);
-      }
-    } else {
-      const { error } = await res
-        .json()
-        .catch(() => ({ error: 'unknown error' }));
-      alert('Login error: ' + error);
     }
-  }
+
+    htmx.defineExtension("set-token", {
+      onEvent: function (name, evt) {
+        if (name === 'htmx:beforeSwap') {
+          const res = JSON.parse(evt.detail.serverResponse)
+          if (evt.detail.xhr.status != 200) {
+            alert('Login error: ' + JSON.stringify(res.error))
+          } else {
+            evt.target.value = res.token;
+            if (document.querySelector('#copyToken').checked) {
+              copyToClipboard(true);
+            }
+          }
+        }
+      }
+    });
   </script>
   <style>
     .container {
       margin-top: 20vh;
     }
-    #token, #token ~ p {
+
+    #token:placeholder-shown,
+    #token:placeholder-shown~p {
       display: none;
     }
-    #token[value], #token[value] ~ p {
+
+    #token:not(:placeholder-shown),
+    #token:not(:placeholder-shown)~p {
       display: inherit !important;
     }
-    </style>
+  </style>
 </head>
 
 <body>
   <div class="container">
     <h1>BlueBookmark</h1>
-    <form action="/api/register" method="post" autocapitalize="none" onsubmit="register(); return false">
+    <form hx-post="/api/register" autocapitalize="none" hx-target="#token">
       <fieldset>
         <label for="nameField">Handle Name</label>
         <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField" name="handle" required>
@@ -68,7 +71,7 @@ export const signUpPage = html`<!doctype html>
       </fieldset>
     </form>
     <div>
-      <input id="token" onfocus="this.select()">
+      <input id="token" hx-on:focus="this.select()" hx-on:click="copyToClipboard()" hx-ext="set-token" placeholder="token">
       <p>Copy this token and paste on to bookmark shortcut</p>
       <p>iOS shortcut: <a href="https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51" target="_blank">Download</a></p>
     </div>
