@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "e085e493-e6f5-402c-bd2a-4b0cc062ebce",
+  "id": "92ff2b9e-5996-425b-a4ef-316067bc4318",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "bookmarks": {
@@ -172,6 +172,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(DATETIME('now', 'localtime'))"
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(UNIXEPOCH('now'))"
         }
       },
       "indexes": {},

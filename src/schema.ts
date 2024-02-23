@@ -51,4 +51,5 @@ export const users = sqliteTable('users', {
   createdAt: text('created_at')
     .notNull()
     .default(sql`(DATETIME('now', 'localtime'))`),
+  issuedAt: integer('issued_at').notNull().default(sql`(UNIXEPOCH('now'))`),
 });
