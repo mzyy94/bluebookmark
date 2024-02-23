@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1708156718727,
+      "when": 1708693962686,
       "tag": "0000_crazy_black_panther",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1708673375941,
-      "tag": "0001_strange_peter_quill",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1708692120786,
-      "tag": "0002_square_wither",
       "breakpoints": true
     }
   ]

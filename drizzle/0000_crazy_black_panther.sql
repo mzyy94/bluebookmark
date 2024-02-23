@@ -5,8 +5,6 @@ CREATE TABLE `bookmarks` (
 	`uri` text NOT NULL,
 	`cid` text NOT NULL,
 	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL,
-	`updated_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL,
-	`deleted` integer DEFAULT false NOT NULL,
 	PRIMARY KEY(`sub`, `uri`)
 );
 --> statement-breakpoint
@@ -16,7 +14,14 @@ CREATE TABLE `operations` (
 	`opcode` text NOT NULL,
 	`uri` text NOT NULL,
 	`cid` text NOT NULL,
-	`bm_rowid` integer NOT NULL,
+	`bm_rowid` integer DEFAULT 0 NOT NULL,
+	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `users` (
+	`sub` text PRIMARY KEY NOT NULL,
+	`handle` text NOT NULL,
+	`bm_num` integer DEFAULT 0 NOT NULL,
 	`created_at` text DEFAULT (DATETIME('now', 'localtime')) NOT NULL
 );
 --> statement-breakpoint
