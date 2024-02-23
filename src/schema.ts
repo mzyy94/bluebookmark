@@ -18,13 +18,6 @@ export const bookmarks = sqliteTable(
     createdAt: text('created_at')
       .notNull()
       .default(sql`(DATETIME('now', 'localtime'))`),
-    updatedAt: text('updated_at')
-      .notNull()
-      .default(sql`(DATETIME('now', 'localtime'))`),
-    /**
-     * @deprecated deleted flag is no longer used
-     */
-    isDeleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.sub, table.uri] }),

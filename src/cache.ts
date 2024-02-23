@@ -40,7 +40,7 @@ const feedCacheKey = (c: Context, iss: string, latest: boolean) => {
 type BookmarkFeed = {
   post: string;
   cid: string;
-  updatedAt: number;
+  createdAt: number;
   rowid: number;
 }[];
 

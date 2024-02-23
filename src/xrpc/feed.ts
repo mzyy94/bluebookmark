@@ -54,7 +54,7 @@ async function getOperationDiffs(
       rowid: a.bookmarkId,
       post: a.uri,
       cid: a.cid,
-      updatedAt: Date.parse(a.createdAt) / 1000,
+      createdAt: Date.parse(a.createdAt) / 1000,
     }));
   const remove = diffs
     .filter((a) => a.opcode === 'delete')
@@ -62,8 +62,8 @@ async function getOperationDiffs(
   return { insert, remove, id };
 }
 
-const newestFirst = <T extends { updatedAt: number }>(a: T, b: T) =>
-  b.updatedAt - a.updatedAt;
+const newestFirst = <T extends { createdAt: number }>(a: T, b: T) =>
+  b.createdAt - a.createdAt;
 
 function appendRange(
   range: { s: number; e: number }[],
@@ -109,7 +109,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
           rowid: sql<number>`rowid`,
           post: bookmarks.uri,
           cid: bookmarks.cid,
-          updatedAt: sql<number>`unixepoch(${bookmarks.updatedAt})`,
+          createdAt: sql<number>`unixepoch(${bookmarks.createdAt})`,
         })
         .from(bookmarks)
         .orderBy(desc(sql`rowid`))
@@ -203,7 +203,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
     const index = cursor
       ? feedItems.findIndex(
-          (a) => a.updatedAt <= cursor.time && a.cid !== cursor.cid,
+          (a) => a.createdAt <= cursor.time && a.cid !== cursor.cid,
         )
       : 0;
     const result = index >= 0 ? feedItems.slice(index, index + limit) : [];

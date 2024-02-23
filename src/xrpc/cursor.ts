@@ -1,9 +1,9 @@
 export function createCursor<
-  T extends { cid: string; updatedAt: number; rowid: number } | undefined,
+  T extends { cid: string; createdAt: number; rowid: number } | undefined,
   R = T extends NonNullable<T> ? string : undefined,
 >(item: T): R {
   return item
-    ? (`${item.updatedAt}::${item.cid}+${item.rowid}` as R)
+    ? (`${item.createdAt}::${item.cid}+${item.rowid}` as R)
     : (undefined as R);
 }
 
