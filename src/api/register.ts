@@ -65,7 +65,7 @@ export const registerAccount = factory.createHandlers(
     const db = drizzle(DB);
     await db
       .insert(users)
-      .values({ handle: handleName, sub: did })
+      .values({ handle: handleName, user: did })
       .onConflictDoNothing();
 
     await savePubkey(c, didDoc.id, findPubkey(didDoc) ?? '');

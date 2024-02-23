@@ -27,13 +27,13 @@ const validateQuery = zValidator(
 
 async function getOperationDiffs(
   db: ReturnType<typeof drizzle>,
-  iss: string,
+  user: string,
   operationId: number,
 ) {
   const operationList = await db
     .select()
     .from(operations)
-    .where(and(eq(operations.sub, iss), gt(operations.id, operationId)))
+    .where(and(eq(operations.user, user), gt(operations.id, operationId)))
     .orderBy(desc(operations.id));
 
   const id = operationList[0]?.id;
@@ -96,8 +96,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
   XrpcAuth({ allowGuest: true }),
   validateQuery,
   async (c) => {
-    const iss: string | undefined = c.get('iss');
-    if (!iss) {
+    const user: string | undefined = c.get('iss');
+    if (!user) {
       const { WELCOME_POST } = env<{ WELCOME_POST: string | undefined }>(c);
       return c.json({ feed: WELCOME_POST ? [{ post: WELCOME_POST }] : [] });
     }
@@ -116,7 +116,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         .limit(limit)
         .where(
           and(
-            eq(bookmarks.sub, iss),
+            eq(bookmarks.user, user),
             rowId ? between(sql`rowid`, until, rowId - 1) : undefined,
           ),
         );
@@ -129,7 +129,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       return c.json({ feed, cursor: createCursor(items[0]) });
     }
 
-    let { feedItems, opId, range } = await getFeedFromCache(c, iss, !cursor);
+    let { feedItems, opId, range } = await getFeedFromCache(c, user, !cursor);
     const updateFeedItems = (limit: number, rowid?: number, until?: number) =>
       fetchFeedItems(limit + 1, rowid, until).then((feeds) => {
         range = appendRange(range, feeds, rowid);
@@ -145,14 +145,14 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       const lastOp = await db
         .select()
         .from(operations)
-        .where(eq(operations.sub, iss))
+        .where(eq(operations.user, user))
         .limit(1)
         .orderBy(desc(operations.id))
         .get();
       opId = lastOp?.id ?? opId;
     } else {
       // Cache hit. check difference from cache
-      const { insert, remove, id } = await getOperationDiffs(db, iss, opId);
+      const { insert, remove, id } = await getOperationDiffs(db, user, opId);
       feedItems = insert
         .concat(feedItems)
         .filter((a) => !remove.includes(a.post))
@@ -210,7 +210,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result[result.length - 1];
     const lastCur = createCursor(lastPost);
-    await putFeedToCache(c, iss, feedItems, opId, range, !cursor);
+    await putFeedToCache(c, user, feedItems, opId, range, !cursor);
 
     return c.json({ cursor: lastCur, feed });
   },

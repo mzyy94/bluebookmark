@@ -41,7 +41,7 @@ const validatePostURLForm = zValidator(
   }),
 );
 
-type PostRecord = Omit<typeof bookmarks.$inferInsert, 'sub'>;
+type PostRecord = Omit<typeof bookmarks.$inferInsert, 'user'>;
 
 async function getPostRecord(url: URL) {
   url.search = '';
@@ -75,7 +75,7 @@ export const postBookmarkHandlers = factory.createHandlers(
     const form = c.req.valid('form');
     const url = new URL(form.url);
 
-    const { sub } = c.get('jwtPayload');
+    const { sub: user } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
@@ -88,7 +88,7 @@ export const postBookmarkHandlers = factory.createHandlers(
     const count = await db
       .select({ value: users.bookmarkCount })
       .from(users)
-      .where(eq(users.sub, sub))
+      .where(eq(users.user, user))
       .get();
     if (!count || count.value > 200) {
       // bookmark limit reached. only DELETE request is allowed for this user at this momen.
@@ -97,11 +97,11 @@ export const postBookmarkHandlers = factory.createHandlers(
 
     const [result] = await db
       .insert(bookmarks)
-      .values({ uri, cid, repo, rkey, sub })
+      .values({ uri, cid, repo, rkey, user })
       .onConflictDoNothing()
       .returning({
         bookmarkId: sql<number>`rowid`,
-        sub: bookmarks.sub,
+        user: bookmarks.user,
         uri: bookmarks.uri,
         cid: bookmarks.cid,
       });
@@ -112,7 +112,7 @@ export const postBookmarkHandlers = factory.createHandlers(
         db
           .update(users)
           .set({ bookmarkCount: count.value + 1 })
-          .where(eq(users.sub, sub)),
+          .where(eq(users.user, user)),
       ]);
       return c.json({ status: 'created', params: { url } }, 201);
     }
@@ -128,7 +128,7 @@ export const deleteBookmarkHandlers = factory.createHandlers(
     const form = c.req.valid('form');
     const url = new URL(form.url);
 
-    const { sub } = c.get('jwtPayload');
+    const { sub: user } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
@@ -140,10 +140,10 @@ export const deleteBookmarkHandlers = factory.createHandlers(
 
     const [result] = await db
       .delete(bookmarks)
-      .where(and(eq(bookmarks.uri, uri), eq(bookmarks.sub, sub)))
+      .where(and(eq(bookmarks.uri, uri), eq(bookmarks.user, user)))
       .returning({
         bookmarkId: sql<number>`rowid`,
-        sub: bookmarks.sub,
+        user: bookmarks.user,
         uri: bookmarks.uri,
         cid: bookmarks.cid,
       });
@@ -154,7 +154,7 @@ export const deleteBookmarkHandlers = factory.createHandlers(
         db
           .update(users)
           .set({ bookmarkCount: sql`${users.bookmarkCount} - 1` })
-          .where(eq(users.sub, sub)),
+          .where(eq(users.user, user)),
       ]);
       return c.json({ status: 'deleted', params: { url } }, 200);
     }
