@@ -85,6 +85,9 @@ function appendRange(
             last.e = e;
             return r;
           }
+          if (last.s === s && last.e === e) {
+            return r;
+          }
         }
         return r.concat([{ s, e }]);
       },
