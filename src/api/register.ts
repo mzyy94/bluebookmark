@@ -62,16 +62,19 @@ export const registerAccount = factory.createHandlers(
       }
     }
 
+    const now = Math.floor(Date.now() / 1000);
+
     const db = drizzle(DB);
     await db
       .insert(users)
       .values({ handle: handleName, user: did })
-      .onConflictDoNothing();
-
+      .onConflictDoUpdate({
+        target: users.user,
+        set: { handle: handleName, issuedAt: now },
+      });
     await savePubkey(c, didDoc.id, findPubkey(didDoc) ?? '');
 
     const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
-    const now = Math.floor(Date.now() / 1000);
     const token = await sign(
       { sub: did, iat: now, exp: now + 30 * 24 * 60 * 60 },
       JWT_SECRET,

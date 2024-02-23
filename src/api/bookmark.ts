@@ -75,7 +75,7 @@ export const postBookmarkHandlers = factory.createHandlers(
     const form = c.req.valid('form');
     const url = new URL(form.url);
 
-    const { sub: user } = c.get('jwtPayload');
+    const { sub: user, iat } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB);
 
@@ -85,12 +85,16 @@ export const postBookmarkHandlers = factory.createHandlers(
     }
     const { repo, rkey, uri, cid } = record;
 
-    const count = await db
-      .select({ value: users.bookmarkCount })
+    const userdata = await db
+      .select({ count: users.bookmarkCount, iat: users.issuedAt })
       .from(users)
       .where(eq(users.user, user))
       .get();
-    if (!count || count.value > 200) {
+
+    if (!userdata || (userdata.iat !== 0 && iat !== userdata.iat)) {
+      return c.text('unauthorized', 401);
+    }
+    if (userdata.count > 200) {
       // bookmark limit reached. only DELETE request is allowed for this user at this momen.
       return c.json({ error: 'bookmark limit reached', params: { url } }, 405);
     }
@@ -111,7 +115,7 @@ export const postBookmarkHandlers = factory.createHandlers(
         db.insert(operations).values({ opcode: 'add', ...result }),
         db
           .update(users)
-          .set({ bookmarkCount: count.value + 1 })
+          .set({ bookmarkCount: userdata.count + 1 })
           .where(eq(users.user, user)),
       ]);
       return c.json({ status: 'created', params: { url } }, 201);
