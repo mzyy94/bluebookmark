@@ -161,11 +161,16 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
       if (!cursor) {
         if (feedItems.length < limit) {
-          // fetch missing pieces from database
-          feedItems = await updateFeedItems(
-            limit - feedItems.length,
-            feedItems[feedItems.length - 1]?.rowid,
-          );
+          const rowid = feedItems[feedItems.length - 1]?.rowid;
+          if (rowid && range.find((r) => r.s === r.e && r.e === rowid)) {
+            // EOF
+          } else {
+            // fetch missing pieces from database
+            feedItems = await updateFeedItems(
+              limit - feedItems.length,
+              feedItems[feedItems.length - 1]?.rowid,
+            );
+          }
         }
       } else if (range.find((r) => r.s === r.e && r.e === cursor.rowid)) {
         // end of feed. nothing to do
