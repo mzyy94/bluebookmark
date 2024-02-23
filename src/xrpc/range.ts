@@ -35,6 +35,10 @@ export class Range {
       }, [] as TRange[]);
   }
 
+  clear() {
+    this.range = [];
+  }
+
   get(row: { rowid: number } | undefined): TRange | undefined {
     return row && this.range.find((r) => row.rowid <= r.s && row.rowid > r.e);
   }

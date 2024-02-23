@@ -34,15 +34,22 @@ async function getOperationDiffs(
     .select()
     .from(operations)
     .where(and(eq(operations.user, user), gt(operations.id, operationId)))
+    .limit(50)
     .orderBy(desc(operations.id));
+  if (operationList.length === 50 && operationList[49].id !== operationId) {
+    return Promise.reject({ error: 'Cache too old', id: operationList[0].id });
+  }
 
   const id = operationList[0]?.id;
   const diffs = operationList
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
     .reduce(
       (a, c) => {
-        if (c.opcode === 'delete' && a.find((b) => b.uri === c.uri)) {
-          return a.filter((b) => b.uri !== c.uri);
+        if (c.opcode === 'delete') {
+          const lastAdded = a.map((b) => b.uri).lastIndexOf(c.uri);
+          if (lastAdded !== -1) {
+            return a.filter((_, i) => i !== lastAdded);
+          }
         }
         return a.concat([c]);
       },
@@ -125,7 +132,16 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       opId = lastOp?.id ?? opId;
     } else {
       // Cache hit. check difference from cache
-      const { insert, remove, id } = await getOperationDiffs(db, user, opId);
+      const { insert, remove, id } = await getOperationDiffs(
+        db,
+        user,
+        opId,
+      ).catch((e): Awaited<ReturnType<typeof getOperationDiffs>> => {
+        range.clear();
+        feedItems = [];
+        return { insert: [], remove: [], id: e.id };
+      });
+
       feedItems = insert
         .concat(feedItems)
         .filter((a) => !remove.includes(a.post))
