@@ -1,4 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
+import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
 import { createFactory } from 'hono/factory';
@@ -6,6 +7,7 @@ import { sign } from 'hono/jwt';
 import { z } from 'zod';
 import type { CreateSession, GetProfile } from '../at-proto';
 import { findPubkey, savePubkey } from '../pubkey';
+import { users } from '../schema';
 
 const validateRegisterForm = zValidator(
   'form',
@@ -52,13 +54,19 @@ export const registerAccount = factory.createHandlers(
       return c.json({ error: 'unexpected handle name' }, 400);
     }
 
-    const { FEED_OWNER } = env<{ FEED_OWNER: string }>(c);
+    const { FEED_OWNER, DB } = env<{ FEED_OWNER: string; DB: D1Database }>(c);
     if (identifier !== FEED_OWNER) {
       const ok = await checkFollowingFeedOwner(FEED_OWNER, accessJwt);
       if (!ok) {
         return c.json({ error: 'forbidden' }, 403);
       }
     }
+
+    const db = drizzle(DB);
+    await db
+      .insert(users)
+      .values({ handle: handleName, sub: did })
+      .onConflictDoNothing();
 
     await savePubkey(c, didDoc.id, findPubkey(didDoc) ?? '');
 

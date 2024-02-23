@@ -8,7 +8,7 @@ import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import type { GetRecord } from '../at-proto';
 import { openPostRecordCache } from '../cache';
-import { bookmarks, operations } from '../schema';
+import { bookmarks, operations, users } from '../schema';
 
 const factory = createFactory();
 
@@ -85,6 +85,16 @@ export const postBookmarkHandlers = factory.createHandlers(
     }
     const { repo, rkey, uri, cid } = record;
 
+    const count = await db
+      .select({ value: users.bookmarkCount })
+      .from(users)
+      .where(eq(users.sub, sub))
+      .get();
+    if (!count || count.value > 200) {
+      // bookmark limit reached. only DELETE request is allowed for this user at this momen.
+      return c.json({ error: 'bookmark limit reached', params: { url } }, 405);
+    }
+
     const [result] = await db
       .insert(bookmarks)
       .values({ uri, cid, repo, rkey, sub })
@@ -97,7 +107,13 @@ export const postBookmarkHandlers = factory.createHandlers(
       });
 
     if (result) {
-      await db.insert(operations).values({ opcode: 'add', ...result });
+      await db.batch([
+        db.insert(operations).values({ opcode: 'add', ...result }),
+        db
+          .update(users)
+          .set({ bookmarkCount: count.value + 1 })
+          .where(eq(users.sub, sub)),
+      ]);
       return c.json({ status: 'created', params: { url } }, 201);
     }
     return c.json({ error: 'already bookmarked', params: { url } }, 409);
@@ -133,7 +149,13 @@ export const deleteBookmarkHandlers = factory.createHandlers(
       });
 
     if (result) {
-      await db.insert(operations).values({ opcode: 'delete', ...result });
+      await db.batch([
+        db.insert(operations).values({ opcode: 'delete', ...result }),
+        db
+          .update(users)
+          .set({ bookmarkCount: sql`${users.bookmarkCount} - 1` })
+          .where(eq(users.sub, sub)),
+      ]);
       return c.json({ status: 'deleted', params: { url } }, 200);
     }
     return c.json({ error: 'bookmark not found', params: { url } }, 404);
