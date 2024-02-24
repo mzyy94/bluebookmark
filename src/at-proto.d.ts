@@ -45,6 +45,7 @@ export type CreateSession = Hono<
       didDoc: DidDoc;
       handle: string;
       accessJwt: string;
+      emailConfirmed: boolean;
     }
   >,
   '/'
@@ -94,29 +95,34 @@ export type DescribeRepo = Hono<
   '/'
 >;
 
-export type GetProfile = Hono<
+export type GetProfiles = Hono<
   Env,
   ToSchema<
     'get',
-    '/xrpc/app.bsky.actor.getProfile',
+    '/xrpc/app.bsky.actor.getProfiles',
     {
       query: {
-        actor: string;
+        actors: string[];
       };
       header: {
         Authorization: string;
       };
     },
     {
-      did: string;
-      handle: string;
-      viewer: {
-        muted: boolean;
-        blockedBy: boolean;
-        blocking?: string;
-        following?: string;
-        followedBy?: string;
-      };
+      profiles: {
+        did: string;
+        handle: string;
+        labels: {
+          val: string;
+        }[];
+        viewer: {
+          muted: boolean;
+          blockedBy: boolean;
+          blocking?: string;
+          following?: string;
+          followedBy?: string;
+        };
+      }[];
     }
   >,
   '/'
