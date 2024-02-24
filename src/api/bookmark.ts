@@ -77,7 +77,7 @@ export const postBookmarkHandlers = factory.createHandlers(
 
     const { sub: user, iat } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
-    const db = drizzle(DB);
+    const db = drizzle(DB, { logger: true });
 
     const record = await getPostRecord(url);
     if (!record) {
@@ -134,7 +134,7 @@ export const deleteBookmarkHandlers = factory.createHandlers(
 
     const { sub: user } = c.get('jwtPayload');
     const { DB } = env<{ DB: D1Database }>(c);
-    const db = drizzle(DB);
+    const db = drizzle(DB, { logger: true });
 
     const record = await getPostRecord(url);
     if (!record) {

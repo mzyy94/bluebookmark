@@ -64,7 +64,7 @@ export const registerAccount = factory.createHandlers(
 
     const now = Math.floor(Date.now() / 1000);
 
-    const db = drizzle(DB);
+    const db = drizzle(DB, { logger: true });
     await db
       .insert(users)
       .values({ handle: handleName, user: did })

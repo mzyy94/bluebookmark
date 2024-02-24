@@ -82,7 +82,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       return c.json({ feed: WELCOME_POST ? [{ post: WELCOME_POST }] : [] });
     }
     const { DB } = env<{ DB: D1Database }>(c);
-    const db = drizzle(DB);
+    const db = drizzle(DB, { logger: true });
     const fetchFeedItems = (limit: number, rowId?: number, until = 0) =>
       db
         .select({
