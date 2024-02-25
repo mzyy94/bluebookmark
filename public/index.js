@@ -38,3 +38,21 @@ const registerServiceWorker = async () => {
 };
 
 registerServiceWorker();
+
+/** @type {any} */
+let installPrompt;
+
+function setupPwaInstallLink() {
+  if (installPrompt) {
+    const installLink = document.querySelector('#install-pwa[hidden]');
+    installLink?.removeAttribute('hidden');
+    installLink?.addEventListener('click', () => installPrompt.prompt());
+  }
+}
+
+window.addEventListener('DOMContentLoaded', setupPwaInstallLink);
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  setupPwaInstallLink();
+});

@@ -1,5 +1,6 @@
 <!doctype html>
 <html>
+
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bluesky Bookmark Feed</title>
@@ -7,7 +8,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
   <link rel="manifest" href="./manifest.json">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.10/htmx.min.js" integrity="sha512-9qpauSP4+dDIldsrdNEZ2Z7JoyLZGfJsAP2wfXnc3drOh+5NXOBxjlq3sGXKdulmN9W+iwLxRt42zKMa8AHEeg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.10/htmx.min.js"
+    integrity="sha512-9qpauSP4+dDIldsrdNEZ2Z7JoyLZGfJsAP2wfXnc3drOh+5NXOBxjlq3sGXKdulmN9W+iwLxRt42zKMa8AHEeg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script defer src="./index.js"></script>
 </head>
 
@@ -17,9 +20,11 @@
     <form hx-post="/api/register" autocapitalize="none" hx-target="#result">
       <fieldset>
         <label for="nameField">Handle Name</label>
-        <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField" name="handle" required>
+        <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField"
+          name="handle" required>
         <label for="passField">App Password</label>
-        <input type="password" autocomplete="current-password" placeholder="bsky-app-pass-word" id="passField" name="password" required>
+        <input type="password" autocomplete="current-password" placeholder="bsky-app-pass-word" id="passField"
+          name="password" required>
         <div class="float-right">
           <input type="checkbox" id="copyToken" checked>
           <label class="label-inline" for="copyToken">Copy token on complete</label>
@@ -27,6 +32,19 @@
         <input class="button-primary" type="submit" value="Create Token">
       </fieldset>
     </form>
+    <dl>
+      <dt>iOS</dt>
+      <dd>
+        Copy token and paste on to bookmark shortcut.
+        <a href="https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51" target="_blank">Download</a>
+      </dd>
+      <dt>Android</dt>
+      <dd>
+        Install this Web Application to Home.
+        <a href="#" hidden id="install-pwa">Install</a>
+      </dd>
+    </dl>
+
     <div id="result" hx-swap="innerHTML">
     </div>
   </div>

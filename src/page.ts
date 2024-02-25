@@ -3,8 +3,6 @@ import { html } from 'hono/html';
 
 const tokenResult = (token: string) => html`
 <input id="token" value="${token}" hx-on:focus="this.select()" hx-on:click="copyToClipboard()" hx-on::load="htmx.find('#copyToken').checked && copyToClipboard(true)">
-<p>Copy this token and paste on to bookmark shortcut</p>
-<p>iOS shortcut: <a href="https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51" target="_blank">Download</a></p>
 `;
 
 const errorResult = (error: string) => html`
