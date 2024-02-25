@@ -20,3 +20,18 @@ function copyToClipboard(noticeFailed) {
     0,
   );
 }
+
+const registerServiceWorker = async () => {
+  if (!('serviceWorker' in navigator)) return;
+
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (registration) {
+    registration.update();
+  } else {
+    await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+    });
+  }
+};
+
+registerServiceWorker();
