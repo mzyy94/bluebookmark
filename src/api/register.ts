@@ -6,6 +6,7 @@ import { createFactory } from 'hono/factory';
 import { sign } from 'hono/jwt';
 import { z } from 'zod';
 import type { CreateSession, GetProfiles } from '../at-proto';
+import { htmxResponse } from '../page';
 import { findPubkey, savePubkey } from '../pubkey';
 import { users } from '../schema';
 
@@ -53,6 +54,7 @@ async function checkValidUser(
 
 export const registerAccount = factory.createHandlers(
   validateRegisterForm,
+  htmxResponse,
   async (c) => {
     const { handle, password } = c.req.valid('form');
     const identifier = handle.startsWith('@') ? handle.slice(1) : handle;

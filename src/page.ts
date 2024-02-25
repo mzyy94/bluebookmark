@@ -1,3 +1,4 @@
+import { createMiddleware } from 'hono/factory';
 import { html } from 'hono/html';
 
 export const signUpPage = html`<!doctype html>
@@ -12,7 +13,7 @@ export const signUpPage = html`<!doctype html>
 
   <script>
     function copyToClipboard(noticeFailed) {
-      const token = document.querySelector('#token').value;
+      const token = htmx.find('#token').value;
       setTimeout(async () =>
         await navigator.clipboard.writeText(token).then(
           () => alert('Token copied!'),
@@ -20,44 +21,13 @@ export const signUpPage = html`<!doctype html>
         )
         , 0);
     }
-
-    htmx.defineExtension("set-token", {
-      onEvent: function (name, evt) {
-        if (name === 'htmx:beforeSwap') {
-          const res = JSON.parse(evt.detail.serverResponse)
-          if (evt.detail.xhr.status != 200) {
-            alert('Login error: ' + JSON.stringify(res.error))
-          } else {
-            evt.target.value = res.token;
-            if (document.querySelector('#copyToken').checked) {
-              copyToClipboard(true);
-            }
-          }
-        }
-      }
-    });
   </script>
-  <style>
-    .container {
-      margin-top: 20vh;
-    }
-
-    #token:placeholder-shown,
-    #token:placeholder-shown~p {
-      display: none;
-    }
-
-    #token:not(:placeholder-shown),
-    #token:not(:placeholder-shown)~p {
-      display: inherit !important;
-    }
-  </style>
 </head>
 
 <body>
-  <div class="container">
+  <div class="container" style="margin-top: 20vh">
     <h1>BlueBookmark</h1>
-    <form hx-post="/api/register" autocapitalize="none" hx-target="#token">
+    <form hx-post="/api/register" autocapitalize="none" hx-target="#result">
       <fieldset>
         <label for="nameField">Handle Name</label>
         <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField" name="handle" required>
@@ -70,12 +40,32 @@ export const signUpPage = html`<!doctype html>
         <input class="button-primary" type="submit" value="Create Token">
       </fieldset>
     </form>
-    <div>
-      <input id="token" hx-on:focus="this.select()" hx-on:click="copyToClipboard()" hx-ext="set-token" placeholder="token">
-      <p>Copy this token and paste on to bookmark shortcut</p>
-      <p>iOS shortcut: <a href="https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51" target="_blank">Download</a></p>
+    <div id="result" hx-swap="innerHTML">
     </div>
   </div>
 </body>
 
 </html>`;
+
+const tokenResult = (token: string) => html`
+<input id="token" value="${token}" hx-on:focus="this.select()" hx-on:click="copyToClipboard()" hx-on::load="htmx.find('#copyToken').checked && copyToClipboard(true)">
+<p>Copy this token and paste on to bookmark shortcut</p>
+<p>iOS shortcut: <a href="https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51" target="_blank">Download</a></p>
+`;
+
+const errorResult = (error: string) => html`
+<b>Error</b>
+<span>${error}</span>
+`;
+
+export const htmxResponse = createMiddleware(async (c, next) => {
+  await next();
+  if (c.req.header('HX-Request')) {
+    const body: { token: string; error: string } = await c.res.json();
+    if (c.res.status === 200) {
+      c.res = await c.html(tokenResult(body.token));
+    } else {
+      c.res = await c.html(errorResult(body.error));
+    }
+  }
+});
