@@ -15,7 +15,13 @@ const addToCache = async (resources) => {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     Promise.all([
-      addToCache(['/', '/index.html', '/index.js']),
+      addToCache([
+        '/',
+        '/index.html',
+        '/index.js',
+        '/success.html',
+        '/error.html',
+      ]),
       self.skipWaiting(),
     ]),
   );
