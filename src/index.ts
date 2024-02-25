@@ -1,17 +1,10 @@
 import { Hono } from 'hono';
-import { createMiddleware } from 'hono/factory';
 import { deleteBookmarkHandlers, postBookmarkHandlers } from './api/bookmark';
 import { registerAccount } from './api/register';
-import { errorLogger } from './logger';
+import { errorLogger, queryLogger } from './logger';
 import { signUpPage } from './page';
 import { wellKnown } from './well-known';
 import { getFeedSkeletonHandlers } from './xrpc/feed';
-
-const queryLogger = createMiddleware(async (c, next) => {
-  const query = c.req.query();
-  console.log('Request query:', query);
-  return next();
-});
 
 const app = new Hono();
 app.use(queryLogger);

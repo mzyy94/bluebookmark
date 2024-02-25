@@ -12,3 +12,9 @@ export const errorLogger = createMiddleware(async (c, next) => {
     }
   }
 });
+
+export const queryLogger = createMiddleware(async (c, next) => {
+  const query = c.req.query();
+  console.debug('Request query:', query);
+  return next();
+});
