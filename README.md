@@ -10,6 +10,7 @@ Bookmark feed for Bluesky, a serverless application running on Cloudflare Worker
 - Private bookmarks hidden from other users
 - Fast response time, performed at the cloud edge
 - Secure design with no credentials stored
+- Progressive Web Application with Web Share Target API
 
 ## Usage
 
@@ -21,9 +22,15 @@ Bookmark feed for Bluesky, a serverless application running on Cloudflare Worker
 3. Bookmark Bluesky post from share menu
 4. Refresh bookmark feed
 
+### For Android device
+
+1. Get a token from the top page
+2. Install PWA
+3. Bookmark Bluesky post from share menu
+4. Refresh bookmark feed
+
 ## Limitation
-- Android is not yet supported.
-- Restricted to only be available for user who follows a feed owner (because it is designed for running on a Free Cloudflare Workers plan).
+- Restricted to only be available for human account.
 - A limit on how many bookmarks can be added per person, and once the limit is reached, no more bookmarks can be added.
 
 ## API
