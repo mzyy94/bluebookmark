@@ -18,6 +18,7 @@ export class Range {
     }
     const end = result[result.length - 1]?.rowid ?? start;
     this.range.push({ s: start, e: end });
+    console.debug(`add range ${start} - ${end}, count = ${result.length}`);
     this.range = this.range
       .sort((a, b) => b.s - a.s)
       .reduce((r, { s, e }) => {

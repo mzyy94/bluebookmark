@@ -11,13 +11,18 @@ export async function getPubkeyFromCache(did: string) {
   const cache = await caches.open('pubkey');
   const req = pubkeyCacheKey(did);
   const res = await cache.match(req);
-  return res?.text() ?? null;
+  if (!res) {
+    return null;
+  }
+  console.debug(`public key cache hit! ${did}`);
+  return res.text();
 }
 
 export async function putPubkeyToCache(did: string, pubkey: string) {
   const cache = await caches.open('pubkey');
   const req = pubkeyCacheKey(did);
   const res = new Response(pubkey);
+  console.debug(`put new public key for '${did}' to cache`);
   return cache.put(req, res);
 }
 
@@ -57,6 +62,7 @@ export async function getFeedFromCache(
   }
   const opId = parseInt(res.headers.get('X-OperationId') ?? '0', 10);
   const range = new Range(JSON.parse(res.headers.get('X-Range') ?? '[]'));
+  console.debug('feed cache hit!', { iss, isLatest, opId, range });
   return {
     feedItems: await res.json<BookmarkFeed>(),
     opId,
@@ -68,14 +74,15 @@ export async function putFeedToCache(
   c: Context,
   iss: string,
   feed: BookmarkFeed,
-  operationId: number,
+  opId: number,
   range: Range,
   isLatest: boolean,
 ) {
   const cache = await caches.open('feed-cache');
   const req = feedCacheKey(c, iss, isLatest);
   const res = new Response(JSON.stringify(feed));
-  res.headers.set('X-OperationId', `${operationId}`);
+  res.headers.set('X-OperationId', `${opId}`);
   res.headers.set('X-Range', range.toString());
+  console.debug('put feed cache', { iss, isLatest, opId, range });
   return cache.put(req, res);
 }

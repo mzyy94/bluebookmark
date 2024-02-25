@@ -37,6 +37,7 @@ export async function getPubkey(c: Context, did: string) {
 }
 
 export async function fetchPubkey(did: string) {
+  console.info(`refresh public key for '${did}'`);
   const res = await hc<DescribeRepo>('https://bsky.social').xrpc[
     'com.atproto.repo.describeRepo'
   ].$get({
