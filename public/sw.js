@@ -21,6 +21,15 @@ self.addEventListener('install', (event) => {
   );
 });
 
+self.addEventListener('message', async (event) => {
+  const token = event.data.token;
+  if (token) {
+    await saveTokenToIndexedDB(token);
+  }
+});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+importScripts('./sw/token.js');

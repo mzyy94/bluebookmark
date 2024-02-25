@@ -11,6 +11,9 @@ function copyToClipboard(noticeFailed) {
   const token = /** @type {HTMLInputElement} */ (
     document.querySelector('#token')
   ).value;
+  navigator.serviceWorker.getRegistration().then((reg) => {
+    reg?.active?.postMessage({ token });
+  });
   setTimeout(
     async () =>
       await navigator.clipboard.writeText(token).then(
