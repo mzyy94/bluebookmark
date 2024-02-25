@@ -37,6 +37,7 @@
 <body>
   <div class="container">
     <h1>Error!!</h1>
+    <h2></h2>
     <svg width="320" height="320" style="overflow:visible;enable-background:new 0 0 32 32" viewBox="0 0 32 32">
       <g>
         <circle cx="16" cy="16" id="BG" r="16" style="fill:#D72828;" />
@@ -45,6 +46,9 @@
     </svg>
     <a href="/">Top</a>
   </div>
+  <script>
+    document.querySelector("h2").innerText = location.search ? decodeURIComponent(location.search.slice(1)) : "Complete"
+  </script>
 </body>
 
 </html>

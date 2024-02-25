@@ -1,0 +1,28 @@
+{
+  "short_name": "BlueBookmark",
+  "name": "Blue Bookmark: Private bookmark feed for bluesky",
+  "icons": [
+    {
+      "src": "/bluebookmark.png",
+      "type": "image/png",
+      "sizes": "1024x1024"
+    }
+  ],
+  "id": "/",
+  "start_url": "/",
+  "background_color": "#007CFF",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#007CFF",
+  "description": "Private bookmark feed for bluesky",
+  "share_target": {
+    "action": "/bookmark",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "name",
+      "text": "description",
+      "url": "link"
+    }
+  }
+}

@@ -38,4 +38,4 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-importScripts('./sw/token.js');
+importScripts('./sw/token.js', './sw/fetch.js');
