@@ -21,6 +21,7 @@ self.addEventListener('install', (event) => {
         '/index.js',
         '/success.html',
         '/error.html',
+        '/confirm.html',
       ]),
       self.skipWaiting(),
     ]),

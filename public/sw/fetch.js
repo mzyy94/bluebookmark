@@ -51,15 +51,24 @@ self.addEventListener('fetch', (/** @type {{request: Request}} */ event) => {
       (async () => {
         const formData = await event.request.formData();
         const postURL = findPostURL(formData);
+        const method = formData.get('method')?.toString() ?? 'POST';
         if (postURL) {
-          const json = await callBookmarkAPI('POST', postURL);
-          if (json.status === 'created') {
-            return Response.redirect('/success.html?Bookmark%20Added');
+          const json = await callBookmarkAPI(method, postURL);
+          switch (json.status) {
+            case 'created':
+              return Response.redirect('/success.html?Bookmark%20Added');
+            case 'deleted':
+              return Response.redirect('/success.html?Bookmark%20Deleted');
           }
-          if (json.error) {
-            return Response.redirect(
-              `/error.html?${encodeURIComponent(json.error)}`,
-            );
+          switch (json.error) {
+            case 'already bookmarked':
+              return Response.redirect(
+                `/confirm.html?url=${encodeURIComponent(postURL)}`,
+              );
+            default:
+              return Response.redirect(
+                `/error.html?${encodeURIComponent(json.error)}`,
+              );
           }
         }
         return Response.redirect('/error.html');
