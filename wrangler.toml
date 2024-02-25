@@ -58,3 +58,6 @@ database_id = "2b5bae5e-61ec-4b9f-86a5-bb432b19b964"
 [[kv_namespaces]]
 binding = "did_key_store"
 id = "c52ce9841627483a8f0148b26dd21388"
+
+[site]
+bucket = "./public"
