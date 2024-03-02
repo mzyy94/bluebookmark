@@ -176,18 +176,18 @@ sequenceDiagram
     actor User
     participant Cloudflare as Cloudflare Worker
     participant Bluesky
-    User->>Cloudflare: reuqest /api/register
+    User->>Cloudflare: request /api/register
     Note left of Cloudflare: Handle Name and App Password
     Cloudflare->>Bluesky: XRPC createSession
     Note right of Cloudflare: Handle Name and App Password
     Bluesky->>Cloudflare: respond did and accessToken
-    Cloudflare->>Bluesky: XRPC getProfile of feed owner
-    Bluesky->>Cloudflare: respond user profile and following status
-    Cloudflare->>Cloudflare: check following state
-    break if user does not follow feed owner
+    Cloudflare->>Bluesky: XRPC getProfiles
+    Bluesky->>Cloudflare: respond user labels and viewer status
+    Cloudflare->>Cloudflare: check for acceptance
+    break if user is an unacceptable user
         Cloudflare->>User: respond forbidden
     end
-    Cloudflare->>Cloudflare: cache publick key
+    Cloudflare->>Cloudflare: cache public key
     Cloudflare->>User: respond token
     Note left of Cloudflare: Token
 ```
@@ -202,7 +202,7 @@ sequenceDiagram
     actor User
     participant Cloudflare as Cloudflare Worker
     participant Bluesky
-    User->>Cloudflare: reuqest /api/bookmark
+    User->>Cloudflare: request /api/bookmark
     Note left of Cloudflare: Post URL and Bearer token
     Cloudflare->>Cloudflare: verify token
     break verification failed
@@ -226,7 +226,7 @@ sequenceDiagram
     actor User
     participant Cloudflare as Cloudflare Worker
     participant Bluesky
-    User->>Cloudflare: reuqest /api/bookmark
+    User->>Cloudflare: request /api/bookmark
     Note left of Cloudflare: Post URL and Bearer token
     Cloudflare->>Cloudflare: verify token
     break verification failed
@@ -238,7 +238,6 @@ sequenceDiagram
         Note right of Cloudflare: Post URL
         Bluesky->>Cloudflare: respond Post uri
     end
-    Cloudflare->>Cloudflare: search bookmark based on Post uri
     Cloudflare->>Cloudflare: delete bookmark
     Cloudflare->>User: respond OK
 ```
@@ -249,24 +248,27 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     actor User
-    participant Bluesky
     participant Cloudflare as Cloudflare Worker
+    participant Bluesky
     User->>Bluesky: request bookmark custom feed
     Bluesky->>Cloudflare: get bookmark custom feed
     Note right of Bluesky: Signed token
-    Cloudflare->>Cloudflare: get publick key from cache
+    Cloudflare->>Cloudflare: get public key from cache
     Cloudflare->>Cloudflare: verify token
     opt if verification failed, refresh public key
         Cloudflare->>Bluesky: XRPC describeRepo
         Bluesky->>Cloudflare: respond new public key
         Cloudflare->>Cloudflare: re-verify user
-        Cloudflare->>Cloudflare: cache publick key
+        Cloudflare->>Cloudflare: cache public key
     end
-    Cloudflare->>Cloudflare: search posts in bookmark
+    Cloudflare->>Cloudflare: get posts from cache
+    opt if not in cache
+      Cloudflare->>Cloudflare: search posts from DB
+    end
     Cloudflare->>Bluesky: respond list of bookmarked posts
     Bluesky->>User: respond feed of bookmark
 ```
 
 ## License
 
-Licensed unser [MIT](LICENSE)
+Licensed under [MIT](LICENSE)
