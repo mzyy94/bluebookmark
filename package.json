@@ -1,6 +1,6 @@
 {
   "name": "bluebookmark",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "init:local": "wrangler d1 execute bluebookmark --local --file=drizzle/0000_crazy_black_panther.sql",
