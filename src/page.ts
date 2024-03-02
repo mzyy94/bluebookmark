@@ -2,7 +2,7 @@ import { createMiddleware } from 'hono/factory';
 import { html } from 'hono/html';
 
 const tokenResult = (token: string) => html`
-<input id="token" value="${token}" hx-on:focus="this.select()" hx-on:click="copyToClipboard()" hx-on::load="htmx.find('#copyToken').checked && copyToClipboard(true)">
+<input id="token" value="${token}" hx-on:focus="this.select()" hx-on:click="copyToClipboard()">
 `;
 
 const errorResult = (error: string) => html`
