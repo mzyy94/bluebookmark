@@ -2,6 +2,8 @@
 
 [![Deploy](https://github.com/mzyy94/bluebookmark/actions/workflows/deploy.yml/badge.svg)](https://github.com/mzyy94/bluebookmark/actions/workflows/deploy.yml)
 
+[🇯🇵**日本語版READMEはこちら**🗾](README.ja.md)
+
 <img src="public/bluebookmark.png" width="128">
 
 Bookmark feed for Bluesky, a serverless application running on Cloudflare Workers®︎, using [hono](https://github.com/honojs/hono) and written in simple code.
