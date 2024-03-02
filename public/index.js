@@ -52,3 +52,14 @@ window.addEventListener('beforeinstallprompt', (event) => {
   installPrompt = event;
   setupPwaInstallLink();
 });
+
+function replaceJaTexts() {
+  if (window.navigator.language === 'ja') {
+    // biome-ignore lint/complexity/noForEach: for...of w/ NodeListOf<Element> has type warning
+    document.querySelectorAll('[data-lang-ja]').forEach((elm) => {
+      elm.textContent = elm.getAttribute('data-lang-ja');
+    });
+  }
+}
+
+window.addEventListener('DOMContentLoaded', replaceJaTexts);

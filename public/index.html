@@ -15,14 +15,14 @@
 </head>
 
 <body>
-  <div class="container" style="margin-top: 20vh">
+  <div class="container" style="margin-top: 10vh">
     <h1>BlueBookmark</h1>
     <form hx-post="/api/register" autocapitalize="none" hx-target="#result">
       <fieldset>
-        <label for="nameField">Handle Name</label>
+        <label for="nameField" data-lang-ja="Blueskyのハンドルネーム">Handle Name</label>
         <input type="text" inputmode="url" autocomplete="url" placeholder="username.bsky.social" id="nameField"
           name="handle" required>
-        <label for="passField">App Password</label>
+        <label for="passField" data-lang-ja="アプリパスワード">App Password</label>
         <input type="password" autocomplete="current-password" placeholder="bsky-app-pass-word" id="passField"
           name="password" required>
         <div class="float-right">
@@ -32,21 +32,20 @@
         <input class="button-primary" type="submit" value="Create Token">
       </fieldset>
     </form>
+    <div id="result" hx-swap="innerHTML">
+    </div>
     <dl>
       <dt>iOS</dt>
       <dd>
-        Copy token and paste on to bookmark shortcut.
+        <span data-lang-ja="トークンをコピーしてBookmarkショートカットをダウンロード">Copy token and paste on to bookmark shortcut.</span>
         <a href="https://www.icloud.com/shortcuts/bf64334da98343f79d03bf012e48bf51" target="_blank">Download</a>
       </dd>
       <dt>Android</dt>
       <dd>
-        Install this Web Application to Home.
+        <span data-lang-ja="このWebサイトをインストールしてホーム画面に追加">Install this Web Application to Home.</span>
         <a href="#" hidden id="install-pwa">Install</a>
       </dd>
     </dl>
-
-    <div id="result" hx-swap="innerHTML">
-    </div>
   </div>
 </body>
 
