@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Publish Feed
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: node scripts/publish-feed.js
         env:
           FEED_HOST: ${{ secrets.FEED_HOST }}
