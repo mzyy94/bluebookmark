@@ -26,7 +26,7 @@ export async function verifyJwt(jwt: string, pubkey: string) {
   const msgHash = await crypto.subtle
     .digest('SHA-256', new TextEncoder().encode(message))
     .then((hash) => new Uint8Array(hash));
-  const decodedSign = atob(signature.replaceAll('-', '+').replaceAll('_', '/'));
+  const decodedSign = atob(signature.replace(/-/g, '+').replace(/_/g, '/'));
   const sign = Uint8Array.from(decodedSign, (c) => c.charCodeAt(0));
 
   return verify(sign, msgHash, key);

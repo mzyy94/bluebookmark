@@ -44,35 +44,39 @@ function findPostURL(formData) {
   return url;
 }
 
-self.addEventListener('fetch', (/** @type {{request: Request}} */ event) => {
-  const url = new URL(event.request.url);
-  if (event.request.method === 'POST' && url.pathname === '/bookmark') {
-    event.respondWith(
-      (async () => {
-        const formData = await event.request.formData();
-        const postURL = findPostURL(formData);
-        const method = formData.get('method')?.toString() ?? 'POST';
-        if (postURL) {
-          const json = await callBookmarkAPI(method, postURL);
-          switch (json.status) {
-            case 'created':
-              return Response.redirect('/success.html?Bookmark%20Added');
-            case 'deleted':
-              return Response.redirect('/success.html?Bookmark%20Deleted');
+// @ts-expect-error force cast
+/** @type {ServiceWorkerGlobalScope} */ (self).addEventListener(
+  'fetch',
+  (event) => {
+    const url = new URL(event.request.url);
+    if (event.request.method === 'POST' && url.pathname === '/bookmark') {
+      event.respondWith(
+        (async () => {
+          const formData = await event.request.formData();
+          const postURL = findPostURL(formData);
+          const method = formData.get('method')?.toString() ?? 'POST';
+          if (postURL) {
+            const json = await callBookmarkAPI(method, postURL);
+            switch (json.status) {
+              case 'created':
+                return Response.redirect('/success.html?Bookmark%20Added');
+              case 'deleted':
+                return Response.redirect('/success.html?Bookmark%20Deleted');
+            }
+            switch (json.error) {
+              case 'already bookmarked':
+                return Response.redirect(
+                  `/confirm.html?url=${encodeURIComponent(postURL)}`,
+                );
+              default:
+                return Response.redirect(
+                  `/error.html?${encodeURIComponent(json.error)}`,
+                );
+            }
           }
-          switch (json.error) {
-            case 'already bookmarked':
-              return Response.redirect(
-                `/confirm.html?url=${encodeURIComponent(postURL)}`,
-              );
-            default:
-              return Response.redirect(
-                `/error.html?${encodeURIComponent(json.error)}`,
-              );
-          }
-        }
-        return Response.redirect('/error.html');
-      })(),
-    );
-  }
-});
+          return Response.redirect('/error.html');
+        })(),
+      );
+    }
+  },
+);

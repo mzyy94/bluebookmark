@@ -1,3 +1,4 @@
+// @ts-expect-error only available on production workers
 import manifest from '__STATIC_CONTENT_MANIFEST';
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/cloudflare-workers';
