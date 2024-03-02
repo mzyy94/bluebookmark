@@ -133,6 +133,13 @@ CF_API_TOKEN  | Cloudflare API token
 FEED_HOST     | Domain on which your feed will be running
 FEED_OWNER    | Bluesky handle name without "@"
 JWT_SECRET    | Random strings to protect sessions
+APP_PASSWORD  | Bluesky app password for [Publish Feed](#publish-feed) use
+
+### Publish Feed
+
+After you have deployed the custom feed, publish the feed to Bluesky.
+Select the "Publish Feed" workflow from GitHub Actions and click "Run workflow".
+Or, run `node ./scripts/publish-feed.js` with FEED_HOST, FEED_OWNER and APP_PASSWORD enviroment variables.
 
 ### Local development
 

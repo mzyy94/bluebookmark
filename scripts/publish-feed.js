@@ -134,7 +134,7 @@ async function main() {
   console.log('** Create Feed **');
   const { identifier, password, feedHost } = checkEnvVars();
   const { accessJwt, did } = await createSession(identifier, password);
-  const imageRef = await uploadBlob(accessJwt, '../public/bluebookmark.png');
+  const imageRef = await uploadBlob(accessJwt, './public/bluebookmark.png');
   await putRecord(accessJwt, did, feedHost, imageRef);
   console.log('Complete!');
 }

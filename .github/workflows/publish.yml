@@ -1,0 +1,16 @@
+name: Publish Feed
+
+on: workflow_dispatch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Publish Feed
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check code
+        run: node scripts/publish-feed.js
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          FEED_OWNER: ${{ secrets.FEED_OWNER }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
