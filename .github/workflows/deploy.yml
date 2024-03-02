@@ -16,7 +16,7 @@ jobs:
       - uses: pnpm/action-setup@v3
         with:
           version: 8
-      - name: Create
+      - name: Deploy Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
@@ -29,3 +29,13 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           FEED_OWNER: ${{ secrets.FEED_OWNER }}
           FEED_HOST: ${{ secrets.FEED_HOST }}
+      - name: Publish Pages
+        env:
+          PAGES_PROJECT: ${{ secrets.PAGES_PROJECT }}
+        if: ${{ env.PAGES_PROJECT != '' }}
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: ${{ secrets.PAGES_PROJECT }}
+          directory: public

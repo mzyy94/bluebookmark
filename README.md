@@ -147,6 +147,11 @@ FEED_HOST=bluebookmark-feed.example.com
 Run `pnpm run init:local` only for the first time.
 Start up local server with `pnpm run dev`.
 
+### Cloudflare Pages (Optional)
+
+If you want to serve static HTMLs from Cloudflare Pages, run `wrangler pages project create <YOUR-UNIQUE-PROJECT-NAME>` once and `wrangler pages deploy public` for each change.
+To deploy to Cloudflare Pages on CI, set the project name to `PAGES_PROJECT` environment secret.
+
 ## Privacy
 - The App Password is only used for user identification and availability checks and is not stored, so it is secure.
 - Bookmarks are visible to administrators because the data stored in the database is not encrypted.
