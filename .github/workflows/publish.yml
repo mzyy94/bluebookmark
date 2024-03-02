@@ -8,9 +8,8 @@ jobs:
     name: Publish Feed
     steps:
       - uses: actions/checkout@v3
-      - name: Check code
-        run: node scripts/publish-feed.js
+      - run: node scripts/publish-feed.js
         env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          FEED_HOST: ${{ secrets.FEED_HOST }}
           FEED_OWNER: ${{ secrets.FEED_OWNER }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
