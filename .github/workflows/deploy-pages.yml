@@ -1,0 +1,25 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'public/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Pages
+    env:
+      PAGES_PROJECT: ${{ secrets.PAGES_PROJECT }}
+    if: ${{ env.PAGES_PROJECT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: ${{ secrets.PAGES_PROJECT }}
+          directory: public
