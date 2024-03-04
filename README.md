@@ -1,6 +1,6 @@
 # BlueBookmark
 
-[![Deploy](https://github.com/mzyy94/bluebookmark/actions/workflows/deploy.yml/badge.svg)](https://github.com/mzyy94/bluebookmark/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/mzyy94/bluebookmark/actions/workflows/deploy-workers.yml/badge.svg)](https://github.com/mzyy94/bluebookmark/actions/workflows/deploy-workers.yml)
 
 [🇯🇵**日本語版READMEはこちら**🗾](README.ja.md)
 
