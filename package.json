@@ -13,17 +13,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.5.3",
-    "@cloudflare/workers-types": "^4.20240208.0",
+    "@cloudflare/workers-types": "^4.20240222.0",
     "drizzle-kit": "^0.20.14",
-    "typescript": "^5.0.4",
-    "wrangler": "^3.28.2"
+    "typescript": "^5.3.3",
+    "wrangler": "^3.30.1"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.1.11",
     "@noble/secp256k1": "^2.0.0",
     "base58-js": "^2.0.0",
-    "drizzle-orm": "^0.29.3",
-    "hono": "^4.0.0",
+    "drizzle-orm": "^0.29.4",
+    "hono": "^4.0.9",
     "zod": "^3.22.4"
   }
 }
