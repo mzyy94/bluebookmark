@@ -5,6 +5,12 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'wrangler.toml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
 
 jobs:
   deploy:
