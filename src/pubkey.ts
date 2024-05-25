@@ -1,4 +1,4 @@
-import { Context } from 'hono';
+import type { Context } from 'hono';
 import { env } from 'hono/adapter';
 import { hc } from 'hono/client';
 import type { DescribeRepo, DidDoc } from './at-proto';

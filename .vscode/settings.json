@@ -9,5 +9,8 @@
   },
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "always"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
   }
 }

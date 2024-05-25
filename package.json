@@ -6,7 +6,7 @@
     "init:local": "wrangler d1 execute bluebookmark --local --file=drizzle/0000_crazy_black_panther.sql",
     "init:remote": "wrangler d1 execute bluebookmark --file=drizzle/0000_crazy_black_panther.sql",
     "generate:sqlite": "drizzle-kit generate:sqlite --schema=src/schema.ts",
-    "check": "tsc",
+    "check": "tsc && biome check ./",
     "deploy": "wrangler deploy --keep-vars",
     "dev": "wrangler dev",
     "start": "wrangler dev"

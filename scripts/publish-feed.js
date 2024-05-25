@@ -61,7 +61,7 @@ async function uploadBlob(token, filename) {
     return null;
   }
   const ext = filename.split('.').pop()?.toLowerCase().replace('jpg', 'jpeg');
-  const blob = await require('fs/promises')
+  const blob = await require('node:fs/promises')
     .readFile(filename)
     .catch((e) => {
       console.log(e.toString());
