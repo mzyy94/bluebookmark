@@ -79,7 +79,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     }
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB, { logger: true });
-    const fetchFeedItems = (limit: number, rowId?: number, until = 0) =>
+    const fetchFeedItems = (limit: number, rowId = 0, until = 0) =>
       db
         .select({
           rowid: sql<number>`rowid`,
@@ -93,7 +93,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
         .where(
           and(
             eq(bookmarks.user, user),
-            rowId ? between(sql`rowid`, until, rowId - 1) : undefined,
+            between(sql`rowid`, until, rowId - 1).if(rowId),
           ),
         );
 
