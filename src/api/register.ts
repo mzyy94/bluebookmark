@@ -85,7 +85,7 @@ export const registerAccount = factory.createHandlers(
         target: users.user,
         set: { handle: identifier, issuedAt: now },
       });
-    await savePubkey(c, didDoc.id, findPubkey(didDoc) ?? '');
+    savePubkey(c, didDoc.id, findPubkey(didDoc) ?? '');
 
     const { JWT_SECRET } = env<{ JWT_SECRET: string }>(c);
     const token = await sign(

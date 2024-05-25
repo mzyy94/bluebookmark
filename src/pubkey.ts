@@ -13,13 +13,13 @@ export function findPubkey(didDoc: DidDoc): string | null {
   return null;
 }
 
-export async function savePubkey(c: Context, did: string, pubkey: string) {
+export function savePubkey(c: Context, did: string, pubkey: string) {
   if (!did || !pubkey) {
     return;
   }
-  await putPubkeyToCache(did, pubkey);
+  c.executionCtx.waitUntil(putPubkeyToCache(did, pubkey));
   const { did_key_store } = env<{ did_key_store: KVNamespace }>(c);
-  await did_key_store.put(did, pubkey);
+  c.executionCtx.waitUntil(did_key_store.put(did, pubkey));
 }
 
 export async function getPubkey(c: Context, did: string) {
@@ -31,7 +31,7 @@ export async function getPubkey(c: Context, did: string) {
   }
   pubkey = await did_key_store.get(did);
   if (pubkey) {
-    await putPubkeyToCache(did, pubkey);
+    c.executionCtx.waitUntil(putPubkeyToCache(did, pubkey));
   }
   return pubkey;
 }

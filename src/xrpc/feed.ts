@@ -193,7 +193,9 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const feed = result.map(({ post }) => ({ post }));
     const lastPost = result.at(-1);
     const lastCur = createCursor(lastPost);
-    await putFeedToCache(c, user, feedItems, opId, range, !cursor);
+    c.executionCtx.waitUntil(
+      putFeedToCache(c, user, feedItems, opId, range, !cursor),
+    );
 
     return c.json<TFeed, 200>({ cursor: lastCur, feed });
   },

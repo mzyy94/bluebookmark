@@ -78,7 +78,7 @@ export const XrpcAuth = (opt: Option) =>
       if (!verified) {
         throw authError(c, 401, 'unauthorized', 'token verification failure');
       }
-      await savePubkey(c, iss, pubkey);
+      savePubkey(c, iss, pubkey);
     }
 
     c.set('iss', iss);
