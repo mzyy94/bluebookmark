@@ -9,6 +9,11 @@ import { bookmarks, operations } from '../schema';
 import { XrpcAuth } from './auth';
 import { createCursor, cursorPattern, parseCursor } from './cursor';
 
+type TFeed = {
+  feed: { post: string }[];
+  cursor?: string;
+};
+
 const factory = createFactory();
 
 // ref. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json
@@ -76,7 +81,9 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const user: string | undefined = c.get('iss');
     if (!user) {
       const { WELCOME_POST } = env<{ WELCOME_POST: string | undefined }>(c);
-      return c.json({ feed: WELCOME_POST ? [{ post: WELCOME_POST }] : [] });
+      return c.json<TFeed, 200>({
+        feed: WELCOME_POST ? [{ post: WELCOME_POST }] : [],
+      });
     }
     const { DB } = env<{ DB: D1Database }>(c);
     const db = drizzle(DB, { logger: true });
@@ -103,7 +110,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     if (limit === 1 && !cursor) {
       const items = await fetchFeedItems(1);
       const feed = items.map(({ post }) => ({ post }));
-      return c.json({ feed, cursor: createCursor(items[0]) });
+      return c.json<TFeed, 200>({ feed, cursor: createCursor(items[0]) });
     }
 
     let { feedItems, opId, range } = await getFeedFromCache(c, user, !cursor);
@@ -117,7 +124,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       // cache not found. fetch bookmarks from database
       feedItems = await updateFeedItems(limit, cursor?.rowid);
       if (feedItems.length === 0) {
-        return c.json({ feed: [] });
+        return c.json<TFeed, 200>({ feed: [] });
       }
       const lastOp = await db
         .select()
@@ -199,6 +206,6 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
     const lastCur = createCursor(lastPost);
     await putFeedToCache(c, user, feedItems, opId, range, !cursor);
 
-    return c.json({ cursor: lastCur, feed });
+    return c.json<TFeed, 200>({ cursor: lastCur, feed });
   },
 );
