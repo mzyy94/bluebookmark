@@ -147,11 +147,11 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
 
       if (!cursor) {
         if (feedItems.length < limit) {
-          if (!range.isEOF(feedItems[feedItems.length - 1])) {
+          if (!range.isEOF(feedItems.at(-1))) {
             // fetch missing pieces from database
             feedItems = await updateFeedItems(
               limit - feedItems.length,
-              feedItems[feedItems.length - 1]?.rowid,
+              feedItems.at(-1)?.rowid,
             );
           }
         }
@@ -170,8 +170,8 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
             ({ rowid }) => rowid < cursor.rowid && rowid >= end,
           );
           if (found.length < limit) {
-            if (!range.isEOF(found[found.length - 1])) {
-              const rowid = found[found.length - 1]?.rowid ?? cursor.rowid;
+            if (!range.isEOF(found.at(-1))) {
+              const rowid = found.at(-1)?.rowid ?? cursor.rowid;
               feedItems = await updateFeedItems(limit - found.length, rowid);
             }
           }
@@ -195,7 +195,7 @@ export const getFeedSkeletonHandlers = factory.createHandlers(
       : 0;
     const result = index >= 0 ? feedItems.slice(index, index + limit) : [];
     const feed = result.map(({ post }) => ({ post }));
-    const lastPost = result[result.length - 1];
+    const lastPost = result.at(-1);
     const lastCur = createCursor(lastPost);
     await putFeedToCache(c, user, feedItems, opId, range, !cursor);
 
