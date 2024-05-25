@@ -60,7 +60,7 @@ export async function getFeedFromCache(
   if (!res) {
     return { feedItems: null, opId: 0, range: new Range([]) };
   }
-  const opId = parseInt(res.headers.get('X-OperationId') ?? '0', 10);
+  const opId = Number.parseInt(res.headers.get('X-OperationId') ?? '0', 10);
   const range = new Range(JSON.parse(res.headers.get('X-Range') ?? '[]'));
   console.debug('feed cache hit!', { iss, isLatest, opId, range });
   return {

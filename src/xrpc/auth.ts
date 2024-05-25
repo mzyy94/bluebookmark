@@ -36,6 +36,7 @@ export const XrpcAuth = (opt: Option) =>
     let exp: number | undefined;
     try {
       ({
+        // @ts-expect-error breaking by: https://github.com/honojs/hono/pull/2373
         payload: { iss, exp, aud },
       } = decode(jwt));
     } catch {

@@ -12,6 +12,7 @@ export async function verifyJwt(jwt: string, pubkey: string) {
   const keybin: Uint8Array = base58_to_binary(pubkey.slice(1));
 
   if (
+    // @ts-expect-error breaking by: https://github.com/honojs/hono/pull/2373
     header.alg !== 'ES256K' ||
     !keybin.slice(0, 2).every((v, i) => v === [0xe7, 0x01][i])
   ) {
