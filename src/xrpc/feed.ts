@@ -27,7 +27,10 @@ async function getOperationDiffs(
   operationId: number,
 ) {
   const operationList = await db
-    .select()
+    .select({
+      ...operations._.columns,
+      createdAt: sql`${operations.createdAt}`.mapWith(Date.parse),
+    })
     .from(operations)
     .where(and(eq(operations.user, user), gt(operations.id, operationId)))
     .limit(50)
@@ -37,27 +40,25 @@ async function getOperationDiffs(
   }
 
   const id = operationList[0]?.id;
-  const diffs = operationList
-    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
-    .reduce(
-      (a, c) => {
-        if (c.opcode === 'delete') {
-          const lastAdded = a.map((b) => b.uri).lastIndexOf(c.uri);
-          if (lastAdded !== -1) {
-            return a.filter((_, i) => i !== lastAdded);
-          }
+  const diffs = operationList.sort(newestFirst).reduce(
+    (a, c) => {
+      if (c.opcode === 'delete') {
+        const lastAdded = a.map((b) => b.uri).lastIndexOf(c.uri);
+        if (lastAdded !== -1) {
+          return a.filter((_, i) => i !== lastAdded);
         }
-        return a.concat([c]);
-      },
-      [] as typeof operationList,
-    );
+      }
+      return a.concat([c]);
+    },
+    [] as typeof operationList,
+  );
   const insert = diffs
     .filter((a) => a.opcode === 'add')
     .map((a) => ({
       rowid: a.bookmarkId,
       post: a.uri,
       cid: a.cid,
-      createdAt: Date.parse(a.createdAt) / 1000,
+      createdAt: a.createdAt / 1000,
     }));
   const remove = diffs
     .filter((a) => a.opcode === 'delete')
