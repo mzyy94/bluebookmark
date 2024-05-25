@@ -1,13 +1,12 @@
-import { zValidator } from '@hono/zod-validator';
 import { and, between, desc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { env } from 'hono/adapter';
 import { createFactory } from 'hono/factory';
-import { z } from 'zod';
 import { getFeedFromCache, putFeedToCache } from '../cache';
+import { XrpcAuth } from '../middleware/auth';
+import { validateQuery } from '../middleware/validator';
 import { bookmarks, operations } from '../schema';
-import { XrpcAuth } from './auth';
-import { createCursor, cursorPattern, parseCursor } from './cursor';
+import { createCursor } from './cursor';
 
 type TFeed = {
   feed: { post: string }[];
@@ -15,16 +14,6 @@ type TFeed = {
 };
 
 const factory = createFactory();
-
-// ref. https://github.com/bluesky-social/atproto/blob/fcf8e3faf311559162c3aa0d9af36f84951914bc/lexicons/app/bsky/feed/getFeedSkeleton.json
-const validateQuery = zValidator(
-  'query',
-  z.object({
-    feed: z.string(),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
-    cursor: z.string().regex(cursorPattern).transform(parseCursor).optional(),
-  }),
-);
 
 async function getOperationDiffs(
   db: ReturnType<typeof drizzle>,

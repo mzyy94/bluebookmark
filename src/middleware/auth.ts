@@ -5,7 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 import { decode } from 'hono/jwt';
 import type { ClientErrorStatusCode } from 'hono/utils/http-status';
 import { fetchPubkey, getPubkey, savePubkey } from '../pubkey';
-import { verifyJwt } from './verify';
+import { verifyJwt } from '../xrpc/verify';
 
 type Option =
   | {

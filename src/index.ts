@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { serveStatic } from 'hono/cloudflare-workers';
 import { deleteBookmarkHandlers, postBookmarkHandlers } from './api/bookmark';
 import { registerAccount } from './api/register';
-import { errorLogger, queryLogger } from './logger';
+import { errorLogger, queryLogger } from './middleware/logger';
 import { wellKnown } from './well-known';
 import { getFeedSkeletonHandlers } from './xrpc/feed';
 
