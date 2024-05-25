@@ -16,11 +16,7 @@ const validateQuery = zValidator(
   'query',
   z.object({
     feed: z.string(),
-    limit: z
-      .string()
-      .default('50')
-      .transform((s) => parseFloat(s))
-      .pipe(z.number().int().min(1).max(100)),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
     cursor: z.string().regex(cursorPattern).transform(parseCursor).optional(),
   }),
 );
